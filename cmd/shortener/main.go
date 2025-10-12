@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"slices"
+	"strings"
 	"time"
 )
 
@@ -44,7 +44,13 @@ func screateID(res http.ResponseWriter, req *http.Request) {
 
 	// Проверяем что Content-Type содержит text/plain
 	contTypeHeader := req.Header.Values("Content-Type")
-	if !slices.Contains(contTypeHeader, "text/plain") {
+	contTypeCorrect := false
+	for _, contHead := range contTypeHeader {
+		if strings.Contains(contHead, "text/plain") {
+			contTypeCorrect = true
+		}
+	}
+	if !contTypeCorrect {
 		http.Error(res, "Content-Type header must be text/plain", http.StatusBadRequest)
 		return
 	}
@@ -78,23 +84,23 @@ func screateID(res http.ResponseWriter, req *http.Request) {
 	// Возвращаем id ссылки
 	res.Header().Add("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(req.URL.Scheme + req.Host + req.RequestURI + shortSt))
+	res.Write([]byte("http://" + req.Host + req.RequestURI + shortSt))
 }
 
 func getURLByID(res http.ResponseWriter, req *http.Request) {
 	// Проверяем что Content-Type содержит text/plain
-	contTypeHeader := req.Header.Values("Content-Type")
-	if !slices.Contains(contTypeHeader, "text/plain") {
-		http.Error(res, "Content-Type header must be text/plain", http.StatusBadRequest)
-		return
-	}
+	// contTypeHeader := req.Header.Values("Content-Type")
+	// if !slices.Contains(contTypeHeader, "text/plain") {
+	// 	http.Error(res, "Content-Type header must be text/plain", http.StatusBadRequest)
+	// 	return
+	// }
 
 	// Возвращаем URL
 	idString := req.PathValue("id")
 	if pURL, ok := urlS[idString]; ok {
 		res.Header().Add("Location", pURL)
 		res.WriteHeader(http.StatusTemporaryRedirect)
-		res.Write([]byte(""))
+		return
 	} else {
 		http.Error(res, "There isn't URL with this id", http.StatusBadRequest)
 		return
