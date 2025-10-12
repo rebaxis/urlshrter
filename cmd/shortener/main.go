@@ -35,7 +35,7 @@ func checkForValue(url string, urlsMap map[string]string) bool {
 	return false
 }
 
-func screateId(res http.ResponseWriter, req *http.Request) {
+func screateID(res http.ResponseWriter, req *http.Request) {
 	// Проверяем что метод POST
 	if req.Method != http.MethodPost {
 		http.Error(res, "Only POST requests are allowed!", http.StatusBadRequest)
@@ -81,7 +81,7 @@ func screateId(res http.ResponseWriter, req *http.Request) {
 	res.Write([]byte(req.URL.Scheme + req.Host + req.RequestURI + shortSt))
 }
 
-func getUrlById(res http.ResponseWriter, req *http.Request) {
+func getURLByID(res http.ResponseWriter, req *http.Request) {
 	// Проверяем что Content-Type содержит text/plain
 	contTypeHeader := req.Header.Values("Content-Type")
 	if !slices.Contains(contTypeHeader, "text/plain") {
@@ -106,8 +106,8 @@ func main() {
 	// добавить middleware text/plain
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", screateId)
-	mux.HandleFunc("GET /{id}", getUrlById)
+	mux.HandleFunc("/", screateID)
+	mux.HandleFunc("GET /{id}", getURLByID)
 
 	if err := http.ListenAndServe(`:8080`, mux); err != nil {
 		panic(err)
