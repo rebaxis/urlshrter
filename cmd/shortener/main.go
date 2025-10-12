@@ -59,21 +59,21 @@ func screateId(res http.ResponseWriter, req *http.Request) {
 	sBody := string(body)
 
 	// Проверяем URL на валидность
-	pUrl, err := url.ParseRequestURI(sBody)
+	pURL, err := url.ParseRequestURI(sBody)
 	if err != nil {
 		http.Error(res, "Body has invalid URL", http.StatusBadRequest)
 		return
 	}
 
 	// Проверяем что этот URL еще не добавлен
-	if checkForValue(pUrl.String(), urlS) {
+	if checkForValue(pURL.String(), urlS) {
 		http.Error(res, "This URL already has short name", http.StatusBadRequest)
 		return
 	}
 
 	// Добавляем URL в наш map
 	shortSt := generateRandomAlphabetString(8)
-	urlS[shortSt] = pUrl.String()
+	urlS[shortSt] = pURL.String()
 
 	// Возвращаем id ссылки
 	res.Header().Add("Content-Type", "text/plain")
@@ -91,8 +91,8 @@ func getUrlById(res http.ResponseWriter, req *http.Request) {
 
 	// Возвращаем URL
 	idString := req.PathValue("id")
-	if pUrl, ok := urlS[idString]; ok {
-		res.Header().Add("Location", pUrl)
+	if pURL, ok := urlS[idString]; ok {
+		res.Header().Add("Location", pURL)
 		res.WriteHeader(http.StatusTemporaryRedirect)
 		res.Write([]byte(""))
 	} else {
