@@ -107,6 +107,10 @@ func TestGetURLByID(t *testing.T) {
 			assert.Equal(t, test.want.code, res.StatusCode)
 			// Проверяем заголовок Location
 			assert.Equal(t, test.want.locationHader, res.Header.Get("Location"))
+			// получаем и проверяем тело ответа
+			defer res.Body.Close()
+			_, err := io.ReadAll(res.Body)
+			require.NoError(t, err)
 		})
 	}
 }
