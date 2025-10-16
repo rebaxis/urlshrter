@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-var urlS = make(map[string]string)
+// define storage variable with element for testing
+var urlS = map[string]string{"testTest": "http://test-test.test"}
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -88,13 +89,6 @@ func screateID(res http.ResponseWriter, req *http.Request) {
 }
 
 func getURLByID(res http.ResponseWriter, req *http.Request) {
-	// Проверяем что Content-Type содержит text/plain
-	// contTypeHeader := req.Header.Values("Content-Type")
-	// if !slices.Contains(contTypeHeader, "text/plain") {
-	// 	http.Error(res, "Content-Type header must be text/plain", http.StatusBadRequest)
-	// 	return
-	// }
-
 	// Возвращаем URL
 	idString := req.PathValue("id")
 	if pURL, ok := urlS[idString]; ok {
@@ -102,15 +96,13 @@ func getURLByID(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	} else {
-		http.Error(res, "There isn't URL with this id", http.StatusBadRequest)
+		http.Error(res, "There isn't URL with this id "+idString, http.StatusBadRequest)
 		return
 	}
 
 }
 
 func main() {
-	// добавить middleware text/plain
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", screateID)
 	mux.HandleFunc("GET /{id}", getURLByID)
