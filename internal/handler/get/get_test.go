@@ -12,8 +12,9 @@ import (
 
 func TestGetURLByID(t *testing.T) {
 	type requestTo struct {
-		method string
-		id     string
+		method     string
+		id         string
+		reqPattern string
 	}
 	type want struct {
 		code          int
@@ -28,8 +29,9 @@ func TestGetURLByID(t *testing.T) {
 		{
 			name: "Positive test #1",
 			requestTo: requestTo{
-				method: http.MethodGet,
-				id:     "testTest",
+				method:     http.MethodGet,
+				id:         "testTest",
+				reqPattern: "GET /{id}",
 			},
 			want: want{
 				code:          http.StatusTemporaryRedirect,
@@ -47,7 +49,7 @@ func TestGetURLByID(t *testing.T) {
 			urlS := map[string]string{test.requestTo.id: test.want.locationHader}
 
 			mux := http.NewServeMux()
-			mux.HandleFunc("GET /{id}", GetURLByID(urlS))
+			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(urlS))
 			mux.ServeHTTP(w, request)
 
 			res := w.Result()
