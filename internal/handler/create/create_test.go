@@ -1,4 +1,4 @@
-package main
+package create
 
 import (
 	"io"
@@ -49,7 +49,9 @@ func TestScreateID(t *testing.T) {
 			request.Host = `127.0.0.1:8080`
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			screateID(w, request)
+			urlS := map[string]string{}
+			handl := ScreateID(urlS)
+			handl(w, request)
 
 			res := w.Result()
 			// проверяем код ответа
@@ -60,57 +62,6 @@ func TestScreateID(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Regexp(t, test.want.response, string(resBody))
-		})
-	}
-}
-
-func TestGetURLByID(t *testing.T) {
-	type requestTo struct {
-		method string
-		target string
-	}
-	type want struct {
-		code          int
-		locationHader string
-	}
-	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
-		requestTo requestTo
-		want      want
-	}{
-		{
-			name: "Positive test #1",
-			requestTo: requestTo{
-				method: http.MethodGet,
-				target: "/testTest",
-			},
-			want: want{
-				code:          http.StatusTemporaryRedirect,
-				locationHader: "http://test-test.test",
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(test.requestTo.method, test.requestTo.target, nil)
-			request.Host = `127.0.0.1:8080`
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
-
-			mux := http.NewServeMux()
-			mux.HandleFunc("GET /{id}", getURLByID)
-			mux.ServeHTTP(w, request)
-
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-			// Проверяем заголовок Location
-			assert.Equal(t, test.want.locationHader, res.Header.Get("Location"))
-			// получаем и проверяем тело ответа
-			defer res.Body.Close()
-			_, err := io.ReadAll(res.Body)
-			require.NoError(t, err)
 		})
 	}
 }

@@ -7,7 +7,7 @@ import (
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func generateRandomAlphabetString(length int) string {
+func GenerateRandomAlphabetString(length int) string {
 	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, length)
 	for i := range b {
@@ -17,7 +17,7 @@ func generateRandomAlphabetString(length int) string {
 }
 
 // Функция для проверки существования значения в map
-func checkForValue(url string, urlsMap map[string]string) bool {
+func CheckForValue(url string, urlsMap map[string]string) bool {
 	//traverse through the map
 	for _, value := range urlsMap {
 		//check if present value is equals to userValue
