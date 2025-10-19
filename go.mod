@@ -4,6 +4,7 @@ go 1.24.8
 
 require (
 	github.com/go-chi/chi/v5 v5.2.3
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 )
 
