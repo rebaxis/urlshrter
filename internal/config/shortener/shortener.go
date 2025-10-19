@@ -3,7 +3,6 @@ package shortener
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -42,17 +41,17 @@ func (a *Address) Type() string {
 	return "Address"
 }
 
-func GetOptions() *Options {
-	var options = new(Options)
+func GetOptions() Options {
+	var options = Options{
+		Address: Address{
+			ServerHost: "",
+			ServerPort: 8080,
+		},
+		BaseURL: "http://localhost:8080/",
+	}
 	flag.VarP(&options.Address, "address", "a", "Server address host:port")
 	flag.StringVarP(&options.BaseURL, "baseURL", "b", "http://localhost:8080", "Base url")
 	flag.Parse()
-
-	if options.Address.ServerHost == "" {
-		fmt.Println("Error: --address is a required flag.")
-		flag.Usage() // Display usage information
-		os.Exit(1)
-	}
 
 	return options
 }
