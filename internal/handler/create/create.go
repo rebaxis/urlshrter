@@ -11,12 +11,6 @@ import (
 
 func ScreateID(urlS map[string]string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// Проверяем что метод POST
-		if req.Method != http.MethodPost {
-			http.Error(res, "Only POST requests are allowed!", http.StatusBadRequest)
-			return
-		}
-
 		// Проверяем что Content-Type содержит text/plain
 		contTypeHeader := req.Header.Values("Content-Type")
 		contTypeCorrect := false
