@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestScreateID(t *testing.T) {
+func TestCreateID(t *testing.T) {
 	type requestTo struct {
 		method      string
 		target      string
@@ -50,7 +50,7 @@ func TestScreateID(t *testing.T) {
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 			urlS := map[string]string{}
-			handl := ScreateID(urlS)
+			handl := CreateID(urlS)
 			handl(w, request)
 
 			res := w.Result()

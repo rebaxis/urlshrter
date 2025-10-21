@@ -18,7 +18,7 @@ func main() {
 	opts := conf.GetOptions()
 
 	r := chi.NewRouter()
-	r.Post("/", create.ScreateID(urlS))
+	r.Post("/", create.CreateID(urlS))
 	r.Get("/{id}", get.GetURLByID(urlS))
 
 	if err := http.ListenAndServe(opts.Address.ServerHost+":"+strconv.Itoa(opts.Address.ServerPort), r); err != nil {

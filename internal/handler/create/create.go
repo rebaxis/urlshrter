@@ -9,7 +9,7 @@ import (
 	"github.com/rebaxis/urlshrter/internal/lib"
 )
 
-func ScreateID(urlS map[string]string) http.HandlerFunc {
+func CreateID(urlS map[string]string) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит text/plain
 		contTypeHeader := req.Header.Values("Content-Type")
