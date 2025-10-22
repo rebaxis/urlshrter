@@ -12,7 +12,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
-	conf "github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
@@ -51,7 +50,7 @@ func NewServer(r *chi.Mux, opts shortener.Options) *http.Server {
 }
 
 func NewOptions() shortener.Options {
-	return conf.GetOptions()
+	return shortener.GetOptions()
 }
 
 func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
