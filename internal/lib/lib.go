@@ -18,13 +18,15 @@ func GenerateRandomAlphabetString(length int) string {
 
 // Функция для проверки существования значения в map
 func CheckForValue(url string, urlsMap map[string]string) bool {
-	//traverse through the map
-	for _, value := range urlsMap {
-		//check if present value is equals to userValue
-		if value == url {
-			//if same return true
-			return true
-		}
+	idMap := make(map[string]string)
+	for key, value := range urlsMap {
+		idMap[value] = key
 	}
-	return false
+
+	_, exists := idMap[url]
+	if exists {
+		return true
+	} else {
+		return false
+	}
 }
