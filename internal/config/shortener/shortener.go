@@ -50,7 +50,7 @@ func GetOptions() Options {
 		BaseURL: "",
 	}
 	flag.VarP(&options.Address, "address", "a", "Server address host:port")
-	flag.StringVarP(&options.BaseURL, "baseURL", "b", "localhost:8080", "Base url")
+	flag.StringVarP(&options.BaseURL, "baseURL", "b", "http://localhost:8080", "Base url")
 	flag.Parse()
 
 	return options

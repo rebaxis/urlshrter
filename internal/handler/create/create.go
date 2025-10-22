@@ -48,6 +48,6 @@ func CreateID(storage model.Storage, opts shortener.Options) http.HandlerFunc {
 		// Возвращаем id ссылки
 		res.Header().Add("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte("http://" + opts.BaseURL + "/" + shortSt))
+		res.Write([]byte(opts.BaseURL + "/" + shortSt))
 	}
 }
