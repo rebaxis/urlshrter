@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func TestGetURLByID(t *testing.T) {
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 
-			urlS := map[string]string{test.requestTo.id: test.want.locationHader}
+			urlS := model.Storage{UrlS: map[string]string{test.requestTo.id: test.want.locationHader}}
 
 			mux := http.NewServeMux()
 			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(urlS))

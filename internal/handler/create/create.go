@@ -7,9 +7,10 @@ import (
 	"strings"
 
 	"github.com/rebaxis/urlshrter/internal/lib"
+	"github.com/rebaxis/urlshrter/internal/model"
 )
 
-func CreateID(urlS map[string]string) http.HandlerFunc {
+func CreateID(storage model.Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит text/plain
 		contTypeHeader := req.Header.Values("Content-Type")
@@ -41,14 +42,14 @@ func CreateID(urlS map[string]string) http.HandlerFunc {
 		}
 
 		// Проверяем что этот URL еще не добавлен
-		if lib.CheckForValue(pURL.String(), urlS) {
+		if lib.CheckForValue(pURL.String(), storage.UrlS) {
 			http.Error(res, "This URL already has short name", http.StatusBadRequest)
 			return
 		}
 
 		// Добавляем URL в наш map
 		shortSt := lib.GenerateRandomAlphabetString(8)
-		urlS[shortSt] = pURL.String()
+		storage.UrlS[shortSt] = pURL.String()
 
 		// Возвращаем id ссылки
 		res.Header().Add("Content-Type", "text/plain")

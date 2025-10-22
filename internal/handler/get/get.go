@@ -1,12 +1,16 @@
 package get
 
-import "net/http"
+import (
+	"net/http"
 
-func GetURLByID(urlS map[string]string) http.HandlerFunc {
+	"github.com/rebaxis/urlshrter/internal/model"
+)
+
+func GetURLByID(storage model.Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Возвращаем URL
 		idString := req.PathValue("id")
-		if pURL, ok := urlS[idString]; ok {
+		if pURL, ok := storage.UrlS[idString]; ok {
 			res.Header().Add("Location", pURL)
 			res.WriteHeader(http.StatusTemporaryRedirect)
 			return

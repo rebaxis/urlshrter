@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/rebaxis/urlshrter/internal/model"
 )
 
 func TestCreateID(t *testing.T) {
@@ -49,7 +51,7 @@ func TestCreateID(t *testing.T) {
 			request.Host = `127.0.0.1:8080`
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			urlS := map[string]string{}
+			urlS := model.GetStorage()
 			handl := CreateID(urlS)
 			handl(w, request)
 
