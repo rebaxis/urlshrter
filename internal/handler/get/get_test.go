@@ -47,7 +47,7 @@ func TestGetURLByID(t *testing.T) {
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 
-			urlS := model.Storage{UrlS: map[string]string{test.requestTo.id: test.want.locationHader}}
+			urlS := model.Storage{URLS: map[string]string{test.requestTo.id: test.want.locationHader}}
 
 			mux := http.NewServeMux()
 			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(urlS))

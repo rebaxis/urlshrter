@@ -42,14 +42,14 @@ func CreateID(storage model.Storage) http.HandlerFunc {
 		}
 
 		// Проверяем что этот URL еще не добавлен
-		if lib.CheckForValue(pURL.String(), storage.UrlS) {
+		if lib.CheckForValue(pURL.String(), storage.URLS) {
 			http.Error(res, "This URL already has short name", http.StatusBadRequest)
 			return
 		}
 
 		// Добавляем URL в наш map
 		shortSt := lib.GenerateRandomAlphabetString(8)
-		storage.UrlS[shortSt] = pURL.String()
+		storage.URLS[shortSt] = pURL.String()
 
 		// Возвращаем id ссылки
 		res.Header().Add("Content-Type", "text/plain")
