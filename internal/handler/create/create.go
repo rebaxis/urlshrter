@@ -13,14 +13,7 @@ import (
 func CreateID(storage model.Storage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит text/plain
-		contTypeHeader := req.Header.Values("Content-Type")
-		contTypeCorrect := false
-		for _, contHead := range contTypeHeader {
-			if strings.Contains(contHead, "text/plain") {
-				contTypeCorrect = true
-			}
-		}
-		if !contTypeCorrect {
+		if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
 			http.Error(res, "Content-Type header must be text/plain", http.StatusBadRequest)
 			return
 		}
