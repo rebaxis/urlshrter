@@ -6,11 +6,12 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
-func CreateID(storage model.Storage) http.HandlerFunc {
+func CreateID(storage model.Storage, opts shortener.Options) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит text/plain
 		if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {
@@ -47,6 +48,6 @@ func CreateID(storage model.Storage) http.HandlerFunc {
 		// Возвращаем id ссылки
 		res.Header().Add("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte("http://" + req.Host + req.RequestURI + shortSt))
+		res.Write([]byte("http://" + opts.BaseURL + "/" + shortSt))
 	}
 }

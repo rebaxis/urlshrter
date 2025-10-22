@@ -35,9 +35,9 @@ func NewStorage() model.Storage {
 	return model.GetStorage()
 }
 
-func NewRouter(storage model.Storage) *chi.Mux {
+func NewRouter(storage model.Storage, opts shortener.Options) *chi.Mux {
 	r := chi.NewRouter()
-	r.Post("/", create.CreateID(storage))
+	r.Post("/", create.CreateID(storage, opts))
 	r.Get("/{id}", get.GetURLByID(storage))
 	return r
 }

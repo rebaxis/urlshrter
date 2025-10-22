@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
@@ -48,11 +49,12 @@ func TestCreateID(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			request := httptest.NewRequest(test.requestTo.method, test.requestTo.target, strings.NewReader(test.requestTo.body))
 			request.Header.Add("Content-Type", test.requestTo.contentType)
-			request.Host = `127.0.0.1:8080`
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 			urlS := model.GetStorage()
-			handl := CreateID(urlS)
+			opts := shortener.GetOptions()
+			opts.BaseURL = `127.0.0.1:8080`
+			handl := CreateID(urlS, opts)
 			handl(w, request)
 
 			res := w.Result()
