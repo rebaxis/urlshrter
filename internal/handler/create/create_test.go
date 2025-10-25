@@ -52,7 +52,7 @@ func TestCreateID(t *testing.T) {
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 			urlS := model.GetStorage()
-			opts := shortener.GetOptions()
+			opts := shortener.GetOpts()
 			opts.BaseURL = `http://127.0.0.1:8080`
 			handl := CreateID(urlS, opts)
 			handl(w, request)

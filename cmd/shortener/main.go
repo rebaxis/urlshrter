@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"strconv"
 
 	chi "github.com/go-chi/chi/v5"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
@@ -25,7 +24,7 @@ func CreateApp() fx.Option {
 			NewStorage,
 			NewRouter,
 			NewServer,
-			NewOptions,
+			NewOpts,
 		),
 		fx.Invoke(StartServer),
 	)
@@ -35,22 +34,22 @@ func NewStorage() model.Storage {
 	return model.GetStorage()
 }
 
-func NewRouter(storage model.Storage, opts shortener.Options) *chi.Mux {
+func NewRouter(storage model.Storage, opts shortener.Opts) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/", create.CreateID(storage, opts))
 	r.Get("/{id}", get.GetURLByID(storage))
 	return r
 }
 
-func NewServer(r *chi.Mux, opts shortener.Options) *http.Server {
+func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	return &http.Server{
-		Addr:    opts.Address.ServerHost + ":" + strconv.Itoa(opts.Address.ServerPort),
+		Addr:    opts.Address,
 		Handler: r,
 	}
 }
 
-func NewOptions() shortener.Options {
-	return shortener.GetOptions()
+func NewOpts() shortener.Opts {
+	return shortener.GetOpts()
 }
 
 func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
