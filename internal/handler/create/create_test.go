@@ -26,8 +26,7 @@ func TestCreateID(t *testing.T) {
 		response string
 	}
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
+		name      string
 		requestTo requestTo
 		want      want
 	}{
