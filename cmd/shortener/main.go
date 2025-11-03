@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	chi "github.com/go-chi/chi/v5"
+	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mdlw "github.com/rebaxis/urlshrter/internal/handler/middleware"
@@ -39,7 +40,8 @@ func NewStorage() model.Storage {
 
 func NewRouter(l logger.Logger, storage model.Storage, opts shortener.Opts) *chi.Mux {
 	r := chi.NewRouter()
-	r.Post("/", mdlw.WithLogging(l, create.CreateID(storage, opts)))
+	r.Post("/api/shorten", mdlw.WithLogging(l, apiCreate.CreateID(storage, opts)))
+  r.Post("/", mdlw.WithLogging(l, create.CreateID(storage, opts)))
 	r.Get("/{id}", mdlw.WithLogging(l, get.GetURLByID(storage)))
 	return r
 }
