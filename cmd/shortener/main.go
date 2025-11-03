@@ -6,15 +6,14 @@ import (
 	"net/http"
 
 	chi "github.com/go-chi/chi/v5"
+	"github.com/rebaxis/urlshrter/internal/config/logger"
+	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mdlw "github.com/rebaxis/urlshrter/internal/handler/middleware"
-	"go.uber.org/fx"
-
-	"github.com/rebaxis/urlshrter/internal/config/logger"
-	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
+	"go.uber.org/fx"
 )
 
 func main() {
@@ -41,7 +40,7 @@ func NewStorage() model.Storage {
 func NewRouter(l logger.Logger, storage model.Storage, opts shortener.Opts) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/api/shorten", mdlw.WithLogging(l, apiCreate.CreateID(storage, opts)))
-  r.Post("/", mdlw.WithLogging(l, create.CreateID(storage, opts)))
+	r.Post("/", mdlw.WithLogging(l, create.CreateID(storage, opts)))
 	r.Get("/{id}", mdlw.WithLogging(l, get.GetURLByID(storage)))
 	return r
 }
