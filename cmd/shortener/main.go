@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	chi "github.com/go-chi/chi/v5"
+	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	"go.uber.org/fx"
@@ -37,6 +38,7 @@ func NewStorage() model.Storage {
 
 func NewRouter(storage model.Storage, opts shortener.Options) *chi.Mux {
 	r := chi.NewRouter()
+	r.Post("/api/shorten", apiCreate.CreateID(storage, opts))
 	r.Post("/", create.CreateID(storage, opts))
 	r.Get("/{id}", get.GetURLByID(storage))
 	return r
