@@ -11,7 +11,7 @@ import (
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
-func CreateID(storage model.Storage, opts shortener.Options) http.HandlerFunc {
+func CreateID(storage model.Storage, opts shortener.Opts) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит text/plain
 		if !strings.Contains(req.Header.Get("Content-Type"), "text/plain") {

@@ -1,57 +1,53 @@
 package shortener
 
 import (
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
+	"log"
+	"net/url"
 
+	"github.com/caarlos0/env/v6"
 	flag "github.com/spf13/pflag"
 )
 
-type Options struct {
-	Address Address
-	BaseURL string
+type Opts struct {
+	Address string `env:"SERVER_ADDRESS"`
+	BaseURL string `env:"BASE_URL"`
 }
 
-type Address struct {
-	ServerHost string
-	ServerPort int
-}
-
-func (a *Address) String() string {
-	return fmt.Sprint(a.ServerHost + strconv.Itoa(a.ServerPort))
-}
-
-func (a *Address) Set(s string) error {
-	hp := strings.Split(s, ":")
-	if len(hp) != 2 {
-		return errors.New("need address in a form host:port")
+func GetOpts() Opts {
+	var opts = Opts{
+		Address: "127.0.0.1:8080",
+		BaseURL: "http://localhost:8080",
 	}
-	port, err := strconv.Atoi(hp[1])
+
+	var envs Opts
+	var flags Opts
+
+	err := env.Parse(&envs)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
-	a.ServerHost = hp[0]
-	a.ServerPort = port
-	return nil
-}
 
-func (a *Address) Type() string {
-	return "Address"
-}
-
-func GetOptions() Options {
-	var options = Options{
-		Address: Address{
-			ServerHost: "",
-			ServerPort: 8080,
-		},
-		BaseURL: "",
-	}
-	flag.VarP(&options.Address, "address", "a", "Server address host:port")
-	flag.StringVarP(&options.BaseURL, "baseURL", "b", "http://localhost:8080", "Base url")
+	flag.StringVarP(&flags.BaseURL, "baseURL", "b", "", "Base url")
+	flag.StringVarP(&flags.Address, "address", "a", "", "Server address host:port")
 	flag.Parse()
 
-	return options
+	if flags.Address != "" {
+		opts.Address = flags.Address
+	}
+	if flags.BaseURL != "" {
+		opts.BaseURL = flags.BaseURL
+	}
+
+	if envs.Address != "" {
+		opts.Address = envs.Address
+	}
+	if envs.BaseURL != "" {
+		opts.BaseURL = envs.BaseURL
+	}
+
+	if _, err := url.ParseRequestURI(opts.BaseURL); err != nil {
+		log.Fatalf("Incorrect BaseURL: %v", err)
+	}
+
+	return opts
 }
