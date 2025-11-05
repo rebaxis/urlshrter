@@ -6,12 +6,11 @@ import (
 	"net/http"
 
 	chi "github.com/go-chi/chi/v5"
-	"github.com/rebaxis/urlshrter/internal/config/logger"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
-	mdlw "github.com/rebaxis/urlshrter/internal/handler/middleware"
+	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"go.uber.org/fx"
 )
@@ -27,7 +26,6 @@ func CreateApp() fx.Option {
 			NewRouter,
 			NewServer,
 			NewOpts,
-			NewLogger,
 		),
 		fx.Invoke(StartServer),
 	)
@@ -37,11 +35,16 @@ func NewStorage() model.Storage {
 	return model.GetStorage()
 }
 
-func NewRouter(l logger.Logger, storage model.Storage, opts shortener.Opts) *chi.Mux {
+func NewRouter(storage model.Storage, opts shortener.Opts) *chi.Mux {
+	var mwChain = []mw.Middleware{
+		mw.CompressMw,
+		mw.LoggingMw,
+	}
+
 	r := chi.NewRouter()
-	r.Post("/api/shorten", mdlw.WithLogging(l, apiCreate.CreateID(storage, opts)))
-	r.Post("/", mdlw.WithLogging(l, create.CreateID(storage, opts)))
-	r.Get("/{id}", mdlw.WithLogging(l, get.GetURLByID(storage)))
+	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(storage, opts), mwChain...))
+	r.Post("/", mw.BuildMwChain(create.CreateID(storage, opts), mwChain...))
+	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(storage), mwChain...))
 	return r
 }
 
@@ -54,10 +57,6 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 
 func NewOpts() shortener.Opts {
 	return shortener.GetOpts()
-}
-
-func NewLogger() logger.Logger {
-	return logger.GetLogger()
 }
 
 func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
