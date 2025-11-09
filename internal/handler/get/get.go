@@ -3,19 +3,21 @@ package get
 import (
 	"net/http"
 
-	"github.com/rebaxis/urlshrter/internal/model"
+	"github.com/rebaxis/urlshrter/internal/service"
 )
 
-func GetURLByID(storage model.Storage) http.HandlerFunc {
+func GetURLByID(service service.URLService) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Возвращаем URL
 		idString := req.PathValue("id")
-		if pURL, ok := storage.URLS[idString]; ok {
-			res.Header().Add("Location", pURL)
-			res.WriteHeader(http.StatusTemporaryRedirect)
+
+		url := service.GetURL(idString)
+		if url == "" {
+			http.Error(res, "There isn't URL with this id "+idString, http.StatusBadRequest)
 			return
 		} else {
-			http.Error(res, "There isn't URL with this id "+idString, http.StatusBadRequest)
+			res.Header().Add("Location", url)
+			res.WriteHeader(http.StatusTemporaryRedirect)
 			return
 		}
 	}

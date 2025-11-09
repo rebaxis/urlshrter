@@ -8,11 +8,11 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
-	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/model"
+	"github.com/rebaxis/urlshrter/internal/service"
 )
 
-func CreateID(storage model.Storage, opts shortener.Opts) http.HandlerFunc {
+func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит application/json
 		if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
@@ -40,23 +40,15 @@ func CreateID(storage model.Storage, opts shortener.Opts) http.HandlerFunc {
 			return
 		}
 
-		// Проверяем что этот URL еще не добавлен
-		if lib.CheckForValue(jsBody.URL, storage.URLS) {
-			http.Error(res, "This URL already has short name", http.StatusBadRequest)
+		data, err := service.SaveURL(jsBody.URL, service, opts)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
-		}
-
-		// Добавляем URL в наш map
-		shortSt := lib.GenerateRandomAlphabetString(8)
-		storage.URLS[shortSt] = jsBody.URL
-
-		data := model.CreateIDResp{
-			Result: opts.BaseURL + "/" + shortSt,
 		}
 
 		jsonData, err := json.MarshalIndent(data, "", "   ")
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
 		}
 

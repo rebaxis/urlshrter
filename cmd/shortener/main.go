@@ -11,9 +11,12 @@ import (
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
-	"github.com/rebaxis/urlshrter/internal/model"
+	"github.com/rebaxis/urlshrter/internal/repository"
+	"github.com/rebaxis/urlshrter/internal/service"
 	"go.uber.org/fx"
 )
+
+// var _ service.URLReaderWriter = (*repository.URLRepository[url.URL, string])(nil)
 
 func main() {
 	fx.New(CreateApp()).Run()
@@ -22,7 +25,8 @@ func main() {
 func CreateApp() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			NewStorage,
+			NewRepo,
+			NewService,
 			NewRouter,
 			NewServer,
 			NewOpts,
@@ -31,20 +35,28 @@ func CreateApp() fx.Option {
 	)
 }
 
-func NewStorage() model.Storage {
-	return model.GetStorage()
+func NewOpts() shortener.Opts {
+	return shortener.GetOpts()
 }
 
-func NewRouter(storage model.Storage, opts shortener.Opts) *chi.Mux {
+func NewRepo(opts shortener.Opts) repository.URLRepository {
+	return repository.NewURLRepository(opts)
+}
+
+func NewService(repo repository.URLRepository) service.URLService {
+	return service.NewURLService(&repo)
+}
+
+func NewRouter(service service.URLService, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
 		mw.CompressMw,
 		mw.LoggingMw,
 	}
 
 	r := chi.NewRouter()
-	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(storage, opts), mwChain...))
-	r.Post("/", mw.BuildMwChain(create.CreateID(storage, opts), mwChain...))
-	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(storage), mwChain...))
+	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwChain...))
+	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwChain...))
+	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwChain...))
 	return r
 }
 
@@ -53,10 +65,6 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 		Addr:    opts.Address,
 		Handler: r,
 	}
-}
-
-func NewOpts() shortener.Opts {
-	return shortener.GetOpts()
 }
 
 func StartServer(lifecycle fx.Lifecycle, server *http.Server) {

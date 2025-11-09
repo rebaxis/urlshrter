@@ -6,7 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
+	"github.com/rebaxis/urlshrter/internal/repository"
+	"github.com/rebaxis/urlshrter/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,10 +50,13 @@ func TestGetURLByID(t *testing.T) {
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 
-			urlS := model.Storage{URLS: map[string]string{test.requestTo.id: test.want.locationHader}}
+			opts := shortener.GetOpts()
+			repo := repository.NewURLRepository(opts)
+			repo.Storage = model.URLStorage{URLS: []model.URLEnt{{Uuid: "1", ShortURL: test.requestTo.id, OriginalURL: test.want.locationHader}}}
+			service := service.NewURLService(&repo)
 
 			mux := http.NewServeMux()
-			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(urlS))
+			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(service))
 			mux.ServeHTTP(w, request)
 
 			res := w.Result()
