@@ -11,7 +11,7 @@ import (
 type Opts struct {
 	Address     string `env:"SERVER_ADDRESS"`
 	BaseURL     string `env:"BASE_URL"`
-	StorageFile string `env:"STORAGE_FILE"`
+	StorageFile string `env:"FILE_STORAGE_PATH"`
 }
 
 func GetOpts() Opts {
