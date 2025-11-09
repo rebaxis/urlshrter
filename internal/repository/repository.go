@@ -14,14 +14,14 @@ type URLRepository struct {
 }
 
 func NewURLRepository(opts shortener.Opts) URLRepository {
+	urls := make([]model.URLEnt, 0)
 	data, err := os.ReadFile(opts.StorageFile)
 	if err != nil {
-		panic("can't open file " + opts.StorageFile)
-	}
-
-	urls := make([]model.URLEnt, 0)
-	if err := json.Unmarshal(data, &urls); err != nil {
-		fmt.Println("can't read json from file " + opts.StorageFile)
+		fmt.Println("can't open file " + opts.StorageFile)
+	} else {
+		if err := json.Unmarshal(data, &urls); err != nil {
+			fmt.Println("can't read json from file " + opts.StorageFile)
+		}
 	}
 
 	return URLRepository{
@@ -38,7 +38,7 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 }
 
 func (r *URLRepository) Save(url string, shortSt string, uuid string, opts shortener.Opts) error {
-	r.Storage.URLS = append(r.Storage.URLS, model.URLEnt{Uuid: uuid, ShortURL: shortSt, OriginalURL: url})
+	r.Storage.URLS = append(r.Storage.URLS, model.URLEnt{UUID: uuid, ShortURL: shortSt, OriginalURL: url})
 
 	// сериализуем структуру в JSON формат
 	data, err := json.MarshalIndent(r.Storage.URLS, "", "   ")

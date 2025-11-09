@@ -15,7 +15,7 @@ type URLStorage struct {
 }
 
 type URLEnt struct {
-	Uuid        string `json:"uuid" validate:"required"`
+	UUID        string `json:"uuid" validate:"required"`
 	ShortURL    string `json:"short_url" validate:"required"`
 	OriginalURL string `json:"original_url" validate:"required,url"`
 }

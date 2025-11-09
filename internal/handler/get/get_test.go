@@ -52,7 +52,7 @@ func TestGetURLByID(t *testing.T) {
 
 			opts := shortener.GetOpts()
 			repo := repository.NewURLRepository(opts)
-			repo.Storage = model.URLStorage{URLS: []model.URLEnt{{Uuid: "1", ShortURL: test.requestTo.id, OriginalURL: test.want.locationHader}}}
+			repo.Storage = model.URLStorage{URLS: []model.URLEnt{{UUID: "1", ShortURL: test.requestTo.id, OriginalURL: test.want.locationHader}}}
 			service := service.NewURLService(&repo)
 
 			mux := http.NewServeMux()
