@@ -48,7 +48,10 @@ func (s URLService) SaveURL(url string, service URLService, opts shortener.Opts)
 	// Добавляем URL в хранилище
 	shortSt := lib.GenerateRandomAlphabetString(8)
 	uuid := uuid.New().String()
-	s.repo.Save(url, shortSt, uuid, opts)
+	err := s.repo.Save(url, shortSt, uuid, opts)
+	if err != nil {
+		return &data, err
+	}
 
 	data = model.CreateIDResp{
 		Result: opts.BaseURL + "/" + shortSt,

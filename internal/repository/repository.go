@@ -45,8 +45,14 @@ func (r *URLRepository) Save(url string, shortSt string, uuid string, opts short
 	if err != nil {
 		return err
 	}
+
 	// сохраняем данные в файл
-	return os.WriteFile(opts.StorageFile, data, 0666)
+	err = os.WriteFile(opts.StorageFile, data, 0666)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *URLRepository) Get(id string) string {
