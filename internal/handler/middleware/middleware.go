@@ -77,7 +77,7 @@ var LoggingMw = func(h http.HandlerFunc) http.HandlerFunc {
 
 var CompressMw = func(h http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Content-Type"), "text/html") &&
+		if !strings.Contains(r.Header.Get("Content-Type"), "text/plain") &&
 			!strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 			h(w, r)
 			return
