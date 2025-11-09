@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -37,9 +36,7 @@ func CreateApp() fx.Option {
 }
 
 func NewOpts() shortener.Opts {
-	opts := shortener.GetOpts()
-	fmt.Printf("Options: %v", opts)
-	return opts
+	return shortener.GetOpts()
 }
 
 func NewRepo(opts shortener.Opts) repository.URLRepository {

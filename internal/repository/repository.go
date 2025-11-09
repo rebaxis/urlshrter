@@ -29,12 +29,6 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 			URLS: urls,
 		},
 	}
-
-	// return URLRepository{
-	// 	storage: model.URLStorage{
-	// 		URLS: make([]model.URLEnt, 0),
-	// 	},
-	// }
 }
 
 func (r *URLRepository) Save(url string, shortSt string, uuid string, opts shortener.Opts) error {
