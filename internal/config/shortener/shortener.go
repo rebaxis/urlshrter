@@ -31,7 +31,7 @@ func GetOpts() Opts {
 
 	flag.StringVarP(&flags.BaseURL, "baseURL", "b", "", "Base url")
 	flag.StringVarP(&flags.Address, "address", "a", "", "Server address host:port")
-	flag.StringVarP(&flags.StorageFile, "storageFile", "f", "", "Path to file storage")
+	flag.StringVarP(&flags.StorageFile, "storageFile", "f", "", "Path to storage file")
 	flag.Parse()
 
 	if flags.Address != "" {
