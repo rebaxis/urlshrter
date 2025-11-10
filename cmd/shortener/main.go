@@ -16,8 +16,6 @@ import (
 	"go.uber.org/fx"
 )
 
-// var _ service.URLReaderWriter = (*repository.URLRepository[url.URL, string])(nil)
-
 func main() {
 	fx.New(CreateApp()).Run()
 }
@@ -53,8 +51,10 @@ func NewRouter(service service.URLService, opts shortener.Opts) *chi.Mux {
 		mw.LoggingMw,
 	}
 
+	var mwAPIChain = append(mwChain, mw.ValidatingMw)
+
 	r := chi.NewRouter()
-	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwChain...))
+	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwChain...))
 	return r

@@ -10,7 +10,7 @@ import (
 )
 
 type URLSave interface {
-	Save(url string, shortSt string, uuid string, opts shortener.Opts) error
+	Save(url string, shortSt string, uuid string) error
 }
 
 type URLGet interface {
@@ -37,7 +37,7 @@ func NewURLService(repo URLReaderWriter) URLService {
 	}
 }
 
-func (s URLService) SaveURL(url string, service URLService, opts shortener.Opts) (*model.CreateIDResp, error) {
+func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDResp, error) {
 	data := model.CreateIDResp{}
 
 	// Проверяем что этот URL еще не добавлен
@@ -48,7 +48,7 @@ func (s URLService) SaveURL(url string, service URLService, opts shortener.Opts)
 	// Добавляем URL в хранилище
 	shortSt := lib.GenerateRandomAlphabetString(8)
 	uuid := uuid.New().String()
-	err := s.repo.Save(url, shortSt, uuid, opts)
+	err := s.repo.Save(url, shortSt, uuid)
 	if err != nil {
 		return &data, err
 	}

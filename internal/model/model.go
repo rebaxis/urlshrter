@@ -1,7 +1,13 @@
 package model
 
+import (
+	"github.com/patrickmn/go-cache"
+)
+
 type URLStorage struct {
-	URLS []URLEnt
+	URLS         []URLEnt
+	Cache        *cache.Cache
+	ReverseCache *cache.Cache
 }
 
 type URLEnt struct {

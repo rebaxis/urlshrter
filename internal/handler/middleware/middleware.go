@@ -3,12 +3,15 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
+	"github.com/rebaxis/urlshrter/internal/model"
 )
 
 type (
@@ -120,10 +123,39 @@ var CompressMw = func(h http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
+var ValidatingMw = func(h http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Проверяем что тело запроса не пустое
+		body, err := io.ReadAll(r.Body)
+		if err != nil || string(body) == "" {
+			http.Error(w, "Body is empty!", http.StatusBadRequest)
+			return
+		}
+		r.Body.Close()
+
+		validate := validator.New()
+
+		var jsBody model.CreateIDReq
+
+		if err := json.Unmarshal(body, &jsBody); err != nil {
+			http.Error(w, "Body must be valid JSON!", http.StatusBadRequest)
+			return
+		}
+		if err := validate.Struct(jsBody); err != nil {
+			http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+		h.ServeHTTP(w, r)
+	})
+}
+
 func BuildMwChain(f http.HandlerFunc, m ...Middleware) http.HandlerFunc {
 	if len(m) == 0 {
 		return f
 	}
 
-	return m[0](BuildMwChain(f, m[1:cap(m)]...))
+	return m[0](BuildMwChain(f, m[1:]...))
 }

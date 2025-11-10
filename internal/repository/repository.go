@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
 type URLRepository struct {
-	Storage model.URLStorage
+	StorageFile string
+	Storage     model.URLStorage
 }
 
 func NewURLRepository(opts shortener.Opts) URLRepository {
@@ -24,15 +27,30 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 		}
 	}
 
+	// create cache
+	c := cache.New(-1*time.Minute, 1*time.Minute)
+	rc := cache.New(-1*time.Minute, 1*time.Minute)
+	if len(urls) > 0 {
+		for _, value := range urls {
+			c.Set(value.ShortURL, value.OriginalURL, cache.DefaultExpiration)
+			rc.Set(value.OriginalURL, value.ShortURL, cache.DefaultExpiration)
+		}
+	}
+
 	return URLRepository{
+		StorageFile: opts.StorageFile,
 		Storage: model.URLStorage{
-			URLS: urls,
+			URLS:         urls,
+			Cache:        c,
+			ReverseCache: rc,
 		},
 	}
 }
 
-func (r *URLRepository) Save(url string, shortSt string, uuid string, opts shortener.Opts) error {
+func (r *URLRepository) Save(url string, shortSt string, uuid string) error {
 	r.Storage.URLS = append(r.Storage.URLS, model.URLEnt{UUID: uuid, ShortURL: shortSt, OriginalURL: url})
+	r.Storage.Cache.Set(shortSt, url, cache.DefaultExpiration)
+	r.Storage.ReverseCache.Set(url, shortSt, cache.DefaultExpiration)
 
 	// сериализуем структуру в JSON формат
 	data, err := json.MarshalIndent(r.Storage.URLS, "", "   ")
@@ -41,7 +59,7 @@ func (r *URLRepository) Save(url string, shortSt string, uuid string, opts short
 	}
 
 	// сохраняем данные в файл
-	err = os.WriteFile(opts.StorageFile, data, 0666)
+	err = os.WriteFile(r.StorageFile, data, 0666)
 	if err != nil {
 		return err
 	}
@@ -50,28 +68,16 @@ func (r *URLRepository) Save(url string, shortSt string, uuid string, opts short
 }
 
 func (r *URLRepository) Get(id string) string {
-	idMap := make(map[string]string)
-	for _, value := range r.Storage.URLS {
-		idMap[value.ShortURL] = value.OriginalURL
-	}
-
-	originalURL, exists := idMap[id]
-	if exists {
-		return originalURL
+	if originalURL, exists := r.Storage.Cache.Get(id); exists {
+		return originalURL.(string)
 	} else {
 		return ""
 	}
 }
 
 func (r *URLRepository) GetByURL(url string) string {
-	idMap := make(map[string]string)
-	for _, value := range r.Storage.URLS {
-		idMap[value.OriginalURL] = value.ShortURL
-	}
-
-	shortURL, exists := idMap[url]
-	if exists {
-		return shortURL
+	if ShortURL, exists := r.Storage.ReverseCache.Get(url); exists {
+		return ShortURL.(string)
 	} else {
 		return ""
 	}

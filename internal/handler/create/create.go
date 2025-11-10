@@ -34,7 +34,7 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 			return
 		}
 
-		data, err := service.SaveURL(pURL.String(), service, opts)
+		data, err := service.SaveURL(pURL.String(), opts)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return

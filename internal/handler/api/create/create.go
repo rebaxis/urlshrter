@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/service"
@@ -20,27 +19,13 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 			return
 		}
 
-		// Проверяем что тело запроса не пустое
-		body, err := io.ReadAll(req.Body)
-		if err != nil || string(body) == "" {
-			http.Error(res, "Body is empty!", http.StatusBadRequest)
-			return
-		}
-
-		validate := validator.New()
+		body, _ := io.ReadAll(req.Body)
 
 		var jsBody model.CreateIDReq
 
-		if err := json.Unmarshal(body, &jsBody); err != nil {
-			http.Error(res, "Body must be valid JSON!", http.StatusBadRequest)
-			return
-		}
-		if err := validate.Struct(jsBody); err != nil {
-			http.Error(res, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
-			return
-		}
+		json.Unmarshal(body, &jsBody)
 
-		data, err := service.SaveURL(jsBody.URL, service, opts)
+		data, err := service.SaveURL(jsBody.URL, opts)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
