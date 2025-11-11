@@ -56,8 +56,8 @@ func TestCreateID(t *testing.T) {
 			opts := shortener.GetOpts()
 			opts.BaseURL = `http://127.0.0.1:8080`
 			tmpFile, _ := os.CreateTemp(os.TempDir(), "*")
-			opts.StorageFile = tmpFile.Name()
 			repo := repository.NewURLRepository(opts)
+			repo.StorageFile = tmpFile.Name()
 			service := service.NewURLService(&repo)
 			handl := CreateID(service, opts)
 			handl(w, request)
