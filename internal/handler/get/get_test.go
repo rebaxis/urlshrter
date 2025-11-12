@@ -4,9 +4,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
-	"github.com/rebaxis/urlshrter/internal/model"
+	"github.com/patrickmn/go-cache"
+	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	"github.com/rebaxis/urlshrter/internal/repository"
+	"github.com/rebaxis/urlshrter/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,10 +52,22 @@ func TestGetURLByID(t *testing.T) {
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
 
-			urlS := model.Storage{URLS: map[string]string{test.requestTo.id: test.want.locationHader}}
+			tmpFile, _ := os.CreateTemp(os.TempDir(), "*")
+
+			opts := shortener.GetOpts()
+			opts.StorageFile = tmpFile.Name()
+
+			repo := repository.NewURLRepository(opts)
+
+			repo.Storage.Cache = cache.New(-1*time.Minute, 1*time.Minute)
+			repo.Storage.Cache.Set(test.requestTo.id, test.want.locationHader, cache.DefaultExpiration)
+			repo.Storage.ReverseCache = cache.New(-1*time.Minute, 1*time.Minute)
+			repo.Storage.ReverseCache.Set(test.want.locationHader, test.requestTo.id, cache.DefaultExpiration)
+
+			service := service.NewURLService(&repo)
 
 			mux := http.NewServeMux()
-			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(urlS))
+			mux.HandleFunc(test.requestTo.reqPattern, GetURLByID(service))
 			mux.ServeHTTP(w, request)
 
 			res := w.Result()

@@ -15,18 +15,3 @@ func GenerateRandomAlphabetString(length int) string {
 	}
 	return string(b)
 }
-
-// Функция для проверки существования значения в map
-func CheckForValue(url string, urlsMap map[string]string) bool {
-	idMap := make(map[string]string)
-	for key, value := range urlsMap {
-		idMap[value] = key
-	}
-
-	_, exists := idMap[url]
-	if exists {
-		return true
-	} else {
-		return false
-	}
-}

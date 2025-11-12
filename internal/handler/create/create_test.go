@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -11,7 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
-	"github.com/rebaxis/urlshrter/internal/model"
+	"github.com/rebaxis/urlshrter/internal/repository"
+	"github.com/rebaxis/urlshrter/internal/service"
 )
 
 func TestCreateID(t *testing.T) {
@@ -26,8 +28,7 @@ func TestCreateID(t *testing.T) {
 		response string
 	}
 	tests := []struct {
-		name string // description of this test case
-		// Named input parameters for target function.
+		name      string
 		requestTo requestTo
 		want      want
 	}{
@@ -51,10 +52,14 @@ func TestCreateID(t *testing.T) {
 			request.Header.Add("Content-Type", test.requestTo.contentType)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			urlS := model.GetStorage()
-			opts := shortener.GetOptions()
+
+			opts := shortener.GetOpts()
 			opts.BaseURL = `http://127.0.0.1:8080`
-			handl := CreateID(urlS, opts)
+			tmpFile, _ := os.CreateTemp(os.TempDir(), "*")
+			repo := repository.NewURLRepository(opts)
+			repo.StorageFile = tmpFile.Name()
+			service := service.NewURLService(&repo)
+			handl := CreateID(service, opts)
 			handl(w, request)
 
 			res := w.Result()
