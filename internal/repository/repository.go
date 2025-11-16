@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	db "database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,7 +16,7 @@ import (
 type URLRepository struct {
 	Storage     model.URLStorage
 	StorageFile string
-	StorageDB   *db.DB
+	StorageDB   *sql.DB
 	UseDB       bool
 }
 
@@ -42,7 +41,7 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 		}
 	}
 
-	var db *db.DB
+	var db *sql.DB
 	var useDB bool
 	if opts.DatabaseDSN != "" {
 		db, err = sql.Open("pgx", opts.DatabaseDSN)
