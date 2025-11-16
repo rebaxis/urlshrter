@@ -22,3 +22,15 @@ func GetURLByID(service service.URLService) http.HandlerFunc {
 		}
 	}
 }
+
+func PingDB(service service.DBService) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+
+		if err := service.Ping(); err != nil {
+			http.Error(res, "Some problem: "+err.Error(), http.StatusInternalServerError)
+			return
+		} else {
+			res.WriteHeader(http.StatusOK)
+		}
+	}
+}

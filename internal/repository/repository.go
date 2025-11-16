@@ -1,19 +1,24 @@
 package repository
 
 import (
+	"database/sql"
+	db "database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/patrickmn/go-cache"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
 type URLRepository struct {
-	StorageFile string
 	Storage     model.URLStorage
+	StorageFile string
+	StorageDB   *db.DB
+	UseDB       bool
 }
 
 func NewURLRepository(opts shortener.Opts) URLRepository {
@@ -37,6 +42,19 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 		}
 	}
 
+	var db *db.DB
+	var useDB bool
+	if opts.DatabaseDSN != "" {
+		db, err = sql.Open("pgx", opts.DatabaseDSN)
+		if err != nil {
+			panic(err)
+		}
+		useDB = true
+		defer db.Close()
+	} else {
+		useDB = false
+	}
+
 	return URLRepository{
 		StorageFile: opts.StorageFile,
 		Storage: model.URLStorage{
@@ -44,6 +62,8 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 			Cache:        c,
 			ReverseCache: rc,
 		},
+		StorageDB: db,
+		UseDB:     useDB,
 	}
 }
 
