@@ -73,7 +73,7 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	}
 }
 
-func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
+func StartServer(lifecycle fx.Lifecycle, server *http.Server, s service.DBService) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
@@ -85,6 +85,9 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
+			if err := s.CloseDB(); err != nil {
+				log.Println("error with closing DB connection: " + err.Error())
+			}
 			log.Println("Shutting down HTTP server")
 			return server.Shutdown(ctx)
 		},

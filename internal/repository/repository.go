@@ -49,7 +49,6 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 			panic(err)
 		}
 		useDB = true
-		defer db.Close()
 	} else {
 		useDB = false
 	}
