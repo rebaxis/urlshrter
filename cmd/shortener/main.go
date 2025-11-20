@@ -24,7 +24,8 @@ func CreateApp() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			NewRepo,
-			NewService,
+			NewURLService,
+			NewDBService,
 			NewRouter,
 			NewServer,
 			NewOpts,
@@ -41,11 +42,15 @@ func NewRepo(opts shortener.Opts) repository.URLRepository {
 	return repository.NewURLRepository(opts)
 }
 
-func NewService(repo repository.URLRepository) service.URLService {
+func NewURLService(repo repository.URLRepository) service.URLService {
 	return service.NewURLService(&repo)
 }
 
-func NewRouter(service service.URLService, opts shortener.Opts) *chi.Mux {
+func NewDBService(repo repository.URLRepository) service.DBService {
+	return service.NewDBService(&repo)
+}
+
+func NewRouter(service service.URLService, dbService service.DBService, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
 		mw.CompressMw,
 		mw.LoggingMw,
@@ -57,6 +62,7 @@ func NewRouter(service service.URLService, opts shortener.Opts) *chi.Mux {
 	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwChain...))
+	r.Get("/ping", mw.BuildMwChain(get.PingDB(dbService), mwChain...))
 	return r
 }
 
@@ -67,7 +73,7 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	}
 }
 
-func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
+func StartServer(lifecycle fx.Lifecycle, server *http.Server, s service.DBService) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
@@ -79,6 +85,9 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
+			if err := s.CloseDB(); err != nil {
+				log.Println("error with closing DB connection: " + err.Error())
+			}
 			log.Println("Shutting down HTTP server")
 			return server.Shutdown(ctx)
 		},
