@@ -56,7 +56,7 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 
 		// DB migration
 		m, err := migrate.New(
-			"file://../../migrations",
+			"file://migrations",
 			opts.DatabaseDSN,
 		)
 		if err != nil {
