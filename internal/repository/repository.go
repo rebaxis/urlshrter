@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -30,6 +31,7 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 			fmt.Println("can't read json from file " + opts.StorageFile)
 		}
 	}
+	fmt.Println("!!!!!!!!!!!!!! " + opts.StorageFile)
 
 	// create cache
 	c := cache.New(-1*time.Minute, 1*time.Minute)
@@ -70,6 +72,14 @@ func (r *URLRepository) Save(url string, shortSt string, uuid string) error {
 	r.Storage.Cache.Set(shortSt, url, cache.DefaultExpiration)
 	r.Storage.ReverseCache.Set(url, shortSt, cache.DefaultExpiration)
 
+	// пишем в БД если она подключена
+	if r.UseDB {
+		_, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3)", uuid, shortSt, url)
+		if err != nil {
+			return err
+		}
+	}
+
 	// сериализуем структуру в JSON формат
 	data, err := json.MarshalIndent(r.Storage.URLS, "", "   ")
 	if err != nil {
@@ -88,15 +98,41 @@ func (r *URLRepository) Save(url string, shortSt string, uuid string) error {
 func (r *URLRepository) Get(id string) string {
 	if originalURL, exists := r.Storage.Cache.Get(id); exists {
 		return originalURL.(string)
-	} else {
-		return ""
 	}
+
+	// ищем запись в БД если она подключена
+	if r.UseDB {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		row := r.StorageDB.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE short_url=$1", id)
+		var url string
+		err := row.Scan(&url)
+		if err != nil && err != sql.ErrNoRows {
+			panic(err)
+		}
+		return url
+	}
+
+	return ""
 }
 
 func (r *URLRepository) GetByURL(url string) string {
 	if ShortURL, exists := r.Storage.ReverseCache.Get(url); exists {
 		return ShortURL.(string)
-	} else {
-		return ""
 	}
+
+	if r.UseDB {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		row := r.StorageDB.QueryRowContext(ctx, "SELECT short_url FROM urls WHERE original_url=$1", url)
+		var id string
+		err := row.Scan(&id)
+		if err != nil && err != sql.ErrNoRows {
+			panic(err)
+		}
+
+		return id
+	}
+
+	return ""
 }
