@@ -5,9 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/patrickmn/go-cache"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
@@ -31,7 +35,6 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 			fmt.Println("can't read json from file " + opts.StorageFile)
 		}
 	}
-	fmt.Println("!!!!!!!!!!!!!! " + opts.StorageFile)
 
 	// create cache
 	c := cache.New(-1*time.Minute, 1*time.Minute)
@@ -50,6 +53,19 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 		if err != nil {
 			panic(err)
 		}
+
+		// DB migration
+		m, err := migrate.New(
+			"file://../../migrations",
+			opts.DatabaseDSN,
+		)
+		if err != nil {
+			log.Fatalf("Error creating migrate instance: %v", err)
+		}
+		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+			log.Fatalf("Error applying migrations: %v", err)
+		}
+
 		useDB = true
 	} else {
 		useDB = false
