@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
+	validator "github.com/asaskevich/govalidator"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
@@ -133,16 +133,29 @@ var ValidatingMw = func(h http.HandlerFunc) http.HandlerFunc {
 		}
 		r.Body.Close()
 
-		validate := validator.New()
-
-		var jsBody model.CreateIDReq
-
-		if err := json.Unmarshal(body, &jsBody); err != nil {
-			http.Error(w, "Body must be valid JSON!", http.StatusBadRequest)
-			return
-		}
-		if err := validate.Struct(jsBody); err != nil {
-			http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
+		switch r.URL.Path {
+		case "/api/shorten/batch":
+			var jsBody model.CreateIDBatchReq
+			if err := json.Unmarshal(body, &jsBody.Batch); err != nil {
+				http.Error(w, "Body must be valid JSON! "+err.Error(), http.StatusBadRequest)
+				return
+			}
+			if _, err := validator.ValidateStruct(jsBody); err != nil {
+				http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		case "/api/shorten":
+			var jsBody model.CreateIDReq
+			if err := json.Unmarshal(body, &jsBody); err != nil {
+				http.Error(w, "Body must be valid JSON!", http.StatusBadRequest)
+				return
+			}
+			if _, err := validator.ValidateStruct(jsBody); err != nil {
+				http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+		default:
+			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 

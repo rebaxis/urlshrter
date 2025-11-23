@@ -60,6 +60,7 @@ func NewRouter(service service.URLService, dbService service.DBService, opts sho
 
 	r := chi.NewRouter()
 	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIChain...))
+	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwChain...))
 	r.Get("/ping", mw.BuildMwChain(get.PingDB(dbService), mwChain...))

@@ -83,6 +83,7 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 	}
 }
 
+// //// Переделать только на SaveBatch
 func (r *URLRepository) Save(url string, shortSt string, uuid string) error {
 	r.Storage.URLS = append(r.Storage.URLS, model.URLEnt{UUID: uuid, ShortURL: shortSt, OriginalURL: url})
 	r.Storage.Cache.Set(shortSt, url, cache.DefaultExpiration)
@@ -94,6 +95,50 @@ func (r *URLRepository) Save(url string, shortSt string, uuid string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// сериализуем структуру в JSON формат
+	data, err := json.MarshalIndent(r.Storage.URLS, "", "   ")
+	if err != nil {
+		return err
+	}
+
+	// сохраняем данные в файл
+	err = os.WriteFile(r.StorageFile, data, 0666)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *URLRepository) SaveBatch(batch model.URLBatch) error {
+	r.Storage.URLS = append(r.Storage.URLS, batch.URLS...)
+
+	for _, v := range batch.URLS {
+		r.Storage.Cache.Set(v.ShortURL, v.OriginalURL, cache.DefaultExpiration)
+		r.Storage.ReverseCache.Set(v.OriginalURL, v.ShortURL, cache.DefaultExpiration)
+	}
+	// пишем в БД если она подключена
+	if r.UseDB {
+		// начинаем транзакцию
+		tx, err := r.StorageDB.Begin()
+		if err != nil {
+			return err
+		}
+		for _, v := range batch.URLS {
+			// все изменения записываются в транзакцию
+			_, err = tx.ExecContext(context.Background(),
+				"INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3)",
+				v.UUID, v.ShortURL, v.OriginalURL)
+			if err != nil {
+				// если ошибка, то откатываем изменения
+				tx.Rollback()
+				return err
+			}
+		}
+		// завершаем транзакцию
+		return tx.Commit()
 	}
 
 	// сериализуем структуру в JSON формат
@@ -151,4 +196,25 @@ func (r *URLRepository) GetByURL(url string) string {
 	}
 
 	return ""
+}
+
+func (r *URLRepository) GetEntByURL(url string) model.URLEnt {
+	if shortURL, exists := r.Storage.ReverseCache.Get(url); exists {
+		return model.URLEnt{ShortURL: shortURL.(string), OriginalURL: url, UUID: "-"}
+	}
+
+	if r.UseDB {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		row := r.StorageDB.QueryRowContext(ctx, "SELECT short_url,original_url,uuid FROM urls WHERE original_url=$1", url)
+		var ent model.URLEnt
+		err := row.Scan(&ent.ShortURL, &ent.OriginalURL, &ent.UUID)
+		if err != nil && err != sql.ErrNoRows {
+			panic(err)
+		}
+
+		return ent
+	}
+
+	return model.URLEnt{}
 }
