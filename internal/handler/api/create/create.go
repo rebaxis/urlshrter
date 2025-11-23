@@ -73,7 +73,7 @@ func CreateIDBatch(service service.URLService, opts shortener.Opts) http.Handler
 		// Готовим массив для ответа
 		var resp model.CreateIDBatchResp
 		for _, v := range jsBody.Batch {
-			resp.Batch = append(resp.Batch, model.BatchEntResp{CorrelationId: v.CorrelationId, ShortURL: URLsMap[v.OriginalURL]})
+			resp.Batch = append(resp.Batch, model.BatchEntResp{CorrelationID: v.CorrelationID, ShortURL: URLsMap[v.OriginalURL]})
 		}
 
 		jsonData, err := json.MarshalIndent(resp.Batch, "", "   ")

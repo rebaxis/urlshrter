@@ -14,7 +14,7 @@ type (
 	}
 
 	BatchEntReq struct {
-		CorrelationId string `json:"correlation_id" valid:"required"`
+		CorrelationID string `json:"correlation_id" valid:"required"`
 		OriginalURL   string `json:"original_url" valid:"required,url"`
 	}
 
@@ -23,7 +23,7 @@ type (
 	}
 
 	BatchEntResp struct {
-		CorrelationId string `json:"correlation_id" valid:"required"`
+		CorrelationID string `json:"correlation_id" valid:"required"`
 		ShortURL      string `json:"short_url" valid:"required"`
 	}
 )

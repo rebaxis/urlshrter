@@ -99,5 +99,10 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 	}
 
 	data.URLS = append(data.URLS, prepData.URLS...)
+	// Добавляем base_url
+	for i, v := range data.URLS {
+		data.URLS[i].ShortURL = opts.BaseURL + "/" + v.ShortURL
+	}
+
 	return data, nil
 }
