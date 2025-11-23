@@ -2,6 +2,7 @@ package create
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -19,16 +20,20 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 			return
 		}
 
+		status := http.StatusCreated
+
 		body, _ := io.ReadAll(req.Body)
-
 		var jsBody model.CreateIDReq
-
 		json.Unmarshal(body, &jsBody)
 
 		data, err := service.SaveURL(jsBody.URL, opts)
-		if err != nil {
+
+		if err != nil && !errors.Is(err, service.ErrExistID()) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
+		}
+		if errors.Is(err, service.ErrExistID()) {
+			status = http.StatusConflict
 		}
 
 		jsonData, err := json.MarshalIndent(data, "", "   ")
@@ -39,7 +44,7 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 
 		// Возвращаем id ссылки
 		res.Header().Add("Content-Type", "application/json")
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(status)
 		res.Write(jsonData)
 	}
 }

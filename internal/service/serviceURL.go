@@ -47,27 +47,38 @@ func NewURLService(repo URLReaderWriter) URLService {
 	}
 }
 
+var (
+	ErrExistID = errors.New("this URL already has short name")
+)
+
+func (s URLService) ErrExistID() error {
+	return ErrExistID
+}
+
 func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDResp, error) {
 	data := model.CreateIDResp{}
+	var sErr error
 
 	// Проверяем что этот URL еще не добавлен
-	if s.repo.GetByURL(url) != "" {
-		return &data, errors.New("this URL already has short name")
-	}
-
-	// Добавляем URL в хранилище
-	shortSt := lib.GenerateRandomAlphabetString(8)
-	uuid := uuid.New().String()
-	err := s.repo.Save(url, shortSt, uuid)
-	if err != nil {
-		return &data, err
+	shortSt := s.repo.GetByURL(url)
+	if shortSt != "" {
+		sErr = s.ErrExistID()
+		// return &data, errors.New("this URL already has short name")
+	} else {
+		// Добавляем URL в хранилище
+		shortSt = lib.GenerateRandomAlphabetString(8)
+		uuid := uuid.New().String()
+		err := s.repo.Save(url, shortSt, uuid)
+		if err != nil {
+			return &data, err
+		}
 	}
 
 	data = model.CreateIDResp{
 		Result: opts.BaseURL + "/" + shortSt,
 	}
 
-	return &data, nil
+	return &data, sErr
 }
 
 func (s URLService) GetURL(id string) string {

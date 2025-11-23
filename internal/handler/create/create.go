@@ -1,6 +1,7 @@
 package create
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -34,15 +35,21 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 			return
 		}
 
+		status := http.StatusCreated
+
 		data, err := service.SaveURL(pURL.String(), opts)
-		if err != nil {
+
+		if err != nil && !errors.Is(err, service.ErrExistID()) {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return
+		}
+		if errors.Is(err, service.ErrExistID()) {
+			status = http.StatusConflict
 		}
 
 		// Возвращаем id ссылки
 		res.Header().Add("Content-Type", "text/plain")
-		res.WriteHeader(http.StatusCreated)
+		res.WriteHeader(status)
 		res.Write([]byte(data.Result))
 	}
 }
