@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/rebaxis/urlshrter/internal/repository"
 )
 
@@ -35,15 +38,6 @@ func (s DBService) Ping() error {
 		}
 	} else {
 		return fmt.Errorf("we don't use DB")
-	}
-	return nil
-}
-
-func (s DBService) CloseDB() error {
-	if s.repo.UseDB {
-		if err := s.repo.StorageDB.Close(); err != nil {
-			return err
-		}
 	}
 	return nil
 }

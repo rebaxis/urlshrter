@@ -5,16 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/patrickmn/go-cache"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
@@ -25,7 +21,7 @@ type URLRepository struct {
 	UseDB       bool
 }
 
-func NewURLRepository(opts shortener.Opts) URLRepository {
+func NewURLRepository(opts shortener.Opts, dbIntrnl dbIntrnl.DBIntrnl) URLRepository {
 	urls := make([]model.URLEnt, 0)
 	data, err := os.ReadFile(opts.StorageFile)
 	if err != nil {
@@ -46,31 +42,6 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 		}
 	}
 
-	var db *sql.DB
-	var useDB bool
-	if opts.DatabaseDSN != "" {
-		db, err = sql.Open("pgx", opts.DatabaseDSN)
-		if err != nil {
-			panic(err)
-		}
-
-		// DB migration
-		m, err := migrate.New(
-			"file://migrations",
-			opts.DatabaseDSN,
-		)
-		if err != nil {
-			log.Fatalf("Error creating migrate instance: %v", err)
-		}
-		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-			log.Fatalf("Error applying migrations: %v", err)
-		}
-
-		useDB = true
-	} else {
-		useDB = false
-	}
-
 	return URLRepository{
 		StorageFile: opts.StorageFile,
 		Storage: model.URLStorage{
@@ -78,8 +49,8 @@ func NewURLRepository(opts shortener.Opts) URLRepository {
 			Cache:        c,
 			ReverseCache: rc,
 		},
-		StorageDB: db,
-		UseDB:     useDB,
+		StorageDB: dbIntrnl.DB,
+		UseDB:     dbIntrnl.UseDB,
 	}
 }
 

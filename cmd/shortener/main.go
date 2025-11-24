@@ -7,6 +7,7 @@ import (
 
 	chi "github.com/go-chi/chi/v5"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
@@ -23,6 +24,7 @@ func main() {
 func CreateApp() fx.Option {
 	return fx.Options(
 		fx.Provide(
+			NewDB,
 			NewRepo,
 			NewURLService,
 			NewDBService,
@@ -38,8 +40,16 @@ func NewOpts() shortener.Opts {
 	return shortener.GetOpts()
 }
 
-func NewRepo(opts shortener.Opts) repository.URLRepository {
-	return repository.NewURLRepository(opts)
+func NewDB(opts shortener.Opts) dbIntrnl.DBIntrnl {
+	dbIntrnl, err := dbIntrnl.NewDB(opts)
+	if err != nil {
+		log.Fatalf("Error DB initialization: %v", err)
+	}
+	return dbIntrnl
+}
+
+func NewRepo(opts shortener.Opts, db dbIntrnl.DBIntrnl) repository.URLRepository {
+	return repository.NewURLRepository(opts, db)
 }
 
 func NewURLService(repo repository.URLRepository) service.URLService {
@@ -74,7 +84,7 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	}
 }
 
-func StartServer(lifecycle fx.Lifecycle, server *http.Server, s service.DBService) {
+func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
@@ -86,7 +96,7 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, s service.DBServic
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			if err := s.CloseDB(); err != nil {
+			if err := d.CloseDB(); err != nil {
 				log.Println("error with closing DB connection: " + err.Error())
 			}
 			log.Println("Shutting down HTTP server")

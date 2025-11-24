@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
 )
@@ -56,7 +57,8 @@ func TestCreateID(t *testing.T) {
 			opts := shortener.GetOpts()
 			opts.BaseURL = `http://127.0.0.1:8080`
 			tmpFile, _ := os.CreateTemp(os.TempDir(), "*")
-			repo := repository.NewURLRepository(opts)
+			dbIntrnlTest, _ := dbIntrnl.NewDB(opts)
+			repo := repository.NewURLRepository(opts, dbIntrnlTest)
 			repo.StorageFile = tmpFile.Name()
 			service := service.NewURLService(&repo)
 			handl := CreateID(service, opts)
