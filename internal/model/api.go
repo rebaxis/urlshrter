@@ -6,7 +6,7 @@ type (
 	}
 
 	CreateIDResp struct {
-		Result string `json:"result"`
+		Result string `json:"result" valid:"required"`
 	}
 
 	CreateIDBatchReq struct {

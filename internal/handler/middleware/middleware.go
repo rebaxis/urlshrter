@@ -3,15 +3,12 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
-	validator "github.com/asaskevich/govalidator"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
-	"github.com/rebaxis/urlshrter/internal/model"
 )
 
 type (
@@ -132,32 +129,6 @@ var ValidatingMw = func(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		r.Body.Close()
-
-		switch r.URL.Path {
-		case "/api/shorten/batch":
-			var jsBody model.CreateIDBatchReq
-			if err := json.Unmarshal(body, &jsBody.Batch); err != nil {
-				http.Error(w, "Body must be valid JSON! "+err.Error(), http.StatusBadRequest)
-				return
-			}
-			if _, err := validator.ValidateStruct(jsBody); err != nil {
-				http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-		case "/api/shorten":
-			var jsBody model.CreateIDReq
-			if err := json.Unmarshal(body, &jsBody); err != nil {
-				http.Error(w, "Body must be valid JSON!", http.StatusBadRequest)
-				return
-			}
-			if _, err := validator.ValidateStruct(jsBody); err != nil {
-				http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-		default:
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
-		}
 
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
 
