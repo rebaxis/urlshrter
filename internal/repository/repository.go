@@ -127,9 +127,9 @@ func (r *URLRepository) SaveBatch(batch model.URLBatch) error {
 	return nil
 }
 
-func (r *URLRepository) Get(id string) string {
+func (r *URLRepository) Get(id string) (string, error) {
 	if originalURL, exists := r.Storage.Cache.Get(id); exists {
-		return originalURL.(string)
+		return originalURL.(string), nil
 	}
 
 	// ищем запись в БД если она подключена
@@ -140,17 +140,17 @@ func (r *URLRepository) Get(id string) string {
 		var url string
 		err := row.Scan(&url)
 		if err != nil && err != sql.ErrNoRows {
-			panic(err)
+			return "", err
 		}
-		return url
+		return url, nil
 	}
 
-	return ""
+	return "", nil
 }
 
-func (r *URLRepository) GetByURL(url string) string {
+func (r *URLRepository) GetByURL(url string) (string, error) {
 	if ShortURL, exists := r.Storage.ReverseCache.Get(url); exists {
-		return ShortURL.(string)
+		return ShortURL.(string), nil
 	}
 
 	if r.UseDB {
@@ -160,18 +160,18 @@ func (r *URLRepository) GetByURL(url string) string {
 		var id string
 		err := row.Scan(&id)
 		if err != nil && err != sql.ErrNoRows {
-			panic(err)
+			return "", err
 		}
 
-		return id
+		return id, nil
 	}
 
-	return ""
+	return "", nil
 }
 
-func (r *URLRepository) GetEntByURL(url string) model.URLEnt {
+func (r *URLRepository) GetEntByURL(url string) (model.URLEnt, error) {
 	if shortURL, exists := r.Storage.ReverseCache.Get(url); exists {
-		return model.URLEnt{ShortURL: shortURL.(string), OriginalURL: url, UUID: "-"}
+		return model.URLEnt{ShortURL: shortURL.(string), OriginalURL: url, UUID: "-"}, nil
 	}
 
 	if r.UseDB {
@@ -181,11 +181,11 @@ func (r *URLRepository) GetEntByURL(url string) model.URLEnt {
 		var ent model.URLEnt
 		err := row.Scan(&ent.ShortURL, &ent.OriginalURL, &ent.UUID)
 		if err != nil && err != sql.ErrNoRows {
-			panic(err)
+			return model.URLEnt{}, err
 		}
 
-		return ent
+		return ent, nil
 	}
 
-	return model.URLEnt{}
+	return model.URLEnt{}, nil
 }

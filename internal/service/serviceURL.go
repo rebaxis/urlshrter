@@ -18,15 +18,15 @@ type URLSaveBatch interface {
 }
 
 type URLGet interface {
-	Get(id string) string
+	Get(id string) (string, error)
 }
 
 type URLGetByURL interface {
-	GetByURL(url string) string
+	GetByURL(url string) (string, error)
 }
 
 type URLGetEntByURL interface {
-	GetEntByURL(url string) model.URLEnt
+	GetEntByURL(url string) (model.URLEnt, error)
 }
 
 type URLReaderWriter interface {
@@ -60,10 +60,12 @@ func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDRes
 	var sErr error
 
 	// Проверяем что этот URL еще не добавлен
-	shortSt := s.repo.GetByURL(url)
+	shortSt, err := s.repo.GetByURL(url)
+	if err != nil {
+		return &data, err
+	}
 	if shortSt != "" {
 		sErr = s.ErrExistID()
-		// return &data, errors.New("this URL already has short name")
 	} else {
 		// Добавляем URL в хранилище
 		shortSt = lib.GenerateRandomAlphabetString(8)
@@ -81,8 +83,12 @@ func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDRes
 	return &data, sErr
 }
 
-func (s URLService) GetURL(id string) string {
-	return s.repo.Get(id)
+func (s URLService) GetURL(id string) (string, error) {
+	url, err := s.repo.Get(id)
+	if err != nil {
+		return "", err
+	}
+	return url, nil
 }
 
 func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts) (model.URLBatch, error) {
@@ -90,7 +96,10 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 	prepData := model.URLBatch{}
 
 	for _, v := range req.Batch {
-		res := s.repo.GetEntByURL(v.OriginalURL)
+		res, err := s.repo.GetEntByURL(v.OriginalURL)
+		if err != nil {
+			return model.URLBatch{}, err
+		}
 
 		if res.ShortURL != "" {
 			data.URLS = append(data.URLS, res)

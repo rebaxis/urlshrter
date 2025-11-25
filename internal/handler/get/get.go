@@ -11,7 +11,12 @@ func GetURLByID(service service.URLService) http.HandlerFunc {
 		// Возвращаем URL
 		idString := req.PathValue("id")
 
-		url := service.GetURL(idString)
+		url, err := service.GetURL(idString)
+		if err != nil {
+			http.Error(res, "Some internal problem: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		if url == "" {
 			http.Error(res, "There isn't URL with this id "+idString, http.StatusBadRequest)
 			return

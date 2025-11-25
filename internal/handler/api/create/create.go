@@ -36,9 +36,8 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 		}
 
 		data, err := service.SaveURL(jsBody.URL, opts)
-
 		if err != nil && !errors.Is(err, service.ErrExistID()) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Some problem on server: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if errors.Is(err, service.ErrExistID()) {
@@ -86,7 +85,7 @@ func CreateIDBatch(service service.URLService, opts shortener.Opts) http.Handler
 
 		data, err := service.SaveURLBatch(jsBody, opts)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Some problem on server: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
