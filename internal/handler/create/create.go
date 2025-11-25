@@ -40,7 +40,7 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 		data, err := service.SaveURL(pURL.String(), opts)
 
 		if err != nil && !errors.Is(err, service.ErrExistID()) {
-			http.Error(res, err.Error(), http.StatusBadRequest)
+			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if errors.Is(err, service.ErrExistID()) {
