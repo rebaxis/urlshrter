@@ -10,6 +10,7 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
 	"github.com/stretchr/testify/assert"
@@ -56,8 +57,8 @@ func TestGetURLByID(t *testing.T) {
 
 			opts := shortener.GetOpts()
 			opts.StorageFile = tmpFile.Name()
-
-			repo := repository.NewURLRepository(opts)
+			dbIntrnlTest, _ := dbIntrnl.NewDB(opts)
+			repo := repository.NewURLRepository(opts, dbIntrnlTest)
 
 			repo.Storage.Cache = cache.New(-1*time.Minute, 1*time.Minute)
 			repo.Storage.Cache.Set(test.requestTo.id, test.want.locationHader, cache.DefaultExpiration)

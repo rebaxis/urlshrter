@@ -7,6 +7,7 @@ import (
 
 	chi "github.com/go-chi/chi/v5"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
@@ -23,8 +24,10 @@ func main() {
 func CreateApp() fx.Option {
 	return fx.Options(
 		fx.Provide(
+			NewDB,
 			NewRepo,
-			NewService,
+			NewURLService,
+			NewDBService,
 			NewRouter,
 			NewServer,
 			NewOpts,
@@ -37,15 +40,27 @@ func NewOpts() shortener.Opts {
 	return shortener.GetOpts()
 }
 
-func NewRepo(opts shortener.Opts) repository.URLRepository {
-	return repository.NewURLRepository(opts)
+func NewDB(opts shortener.Opts) dbIntrnl.DBIntrnl {
+	dbIntrnl, err := dbIntrnl.NewDB(opts)
+	if err != nil {
+		log.Fatalf("Error DB initialization: %v", err)
+	}
+	return dbIntrnl
 }
 
-func NewService(repo repository.URLRepository) service.URLService {
+func NewRepo(opts shortener.Opts, db dbIntrnl.DBIntrnl) repository.URLRepository {
+	return repository.NewURLRepository(opts, db)
+}
+
+func NewURLService(repo repository.URLRepository) service.URLService {
 	return service.NewURLService(&repo)
 }
 
-func NewRouter(service service.URLService, opts shortener.Opts) *chi.Mux {
+func NewDBService(repo repository.URLRepository) service.DBService {
+	return service.NewDBService(&repo)
+}
+
+func NewRouter(service service.URLService, dbService service.DBService, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
 		mw.CompressMw,
 		mw.LoggingMw,
@@ -55,8 +70,10 @@ func NewRouter(service service.URLService, opts shortener.Opts) *chi.Mux {
 
 	r := chi.NewRouter()
 	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIChain...))
+	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwChain...))
+	r.Get("/ping", mw.BuildMwChain(get.PingDB(dbService), mwChain...))
 	return r
 }
 
@@ -67,7 +84,7 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	}
 }
 
-func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
+func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
@@ -79,6 +96,9 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server) {
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
+			if err := d.CloseDB(); err != nil {
+				log.Println("error with closing DB connection: " + err.Error())
+			}
 			log.Println("Shutting down HTTP server")
 			return server.Shutdown(ctx)
 		},
