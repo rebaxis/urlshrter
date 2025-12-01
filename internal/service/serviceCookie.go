@@ -18,7 +18,7 @@ type JWTCookieConfig struct {
 	CookieName      string
 	TokenExpiration time.Time
 	Secure          bool
-	HttpOnly        bool
+	HTTPOnly        bool
 	SameSite        http.SameSite
 }
 
@@ -41,7 +41,7 @@ func NewJWTCookieService(config JWTCookieConfig) *JWTCookieService {
 		config.SameSite = http.SameSiteLaxMode
 	}
 	config.Secure = true
-	config.HttpOnly = true
+	config.HTTPOnly = true
 
 	return &JWTCookieService{
 		config: config,
@@ -97,7 +97,7 @@ func (j *JWTCookieService) SetJWTCookie(w http.ResponseWriter, userID string) er
 		Value:    token,
 		Expires:  j.config.TokenExpiration,
 		Secure:   j.config.Secure,
-		HttpOnly: j.config.HttpOnly,
+		HttpOnly: j.config.HTTPOnly,
 		SameSite: j.config.SameSite,
 	})
 

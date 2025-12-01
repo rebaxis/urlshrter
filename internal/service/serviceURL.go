@@ -73,7 +73,8 @@ func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.Cr
 		sErr = s.ErrExistID()
 	} else {
 		// Добавляем URL в хранилище
-		urlEnt.ShortURL = lib.GenerateRandomAlphabetString(8)
+		shortSt = lib.GenerateRandomAlphabetString(8)
+		urlEnt.ShortURL = shortSt
 		urlEnt.UUID = uuid.New().String()
 		err := s.repo.Save(urlEnt)
 		if err != nil {
