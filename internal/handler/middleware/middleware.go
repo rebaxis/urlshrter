@@ -146,7 +146,7 @@ type (
 	}
 
 	JWTCookieSetter interface {
-		SetJWTCookie(w http.ResponseWriter, userId string) error
+		SetJWTCookie(w http.ResponseWriter, userID string) error
 	}
 
 	JWTCookieManager interface {
@@ -160,13 +160,13 @@ func AvtorizationMw(jwtCookieService JWTCookieManager) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := jwtCookieService.GetClaimsFromRequest(r)
 			if err == http.ErrNoCookie || err == service.ErrInvalidToken || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-				userId := lib.GenerateRandomAlphabetString(6)
-				err = jwtCookieService.SetJWTCookie(w, userId)
+				userID := lib.GenerateRandomAlphabetString(6)
+				err = jwtCookieService.SetJWTCookie(w, userID)
 				if err != nil {
 					http.Error(w, "Some problem: "+err.Error(), http.StatusBadRequest)
 					return
 				}
-				r.Header.Add("X-User-ID", userId)
+				r.Header.Add("X-User-ID", userID)
 				h.ServeHTTP(w, r)
 				return
 			}
