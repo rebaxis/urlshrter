@@ -10,7 +10,7 @@ import (
 )
 
 type URLSave interface {
-	Save(url string, shortSt string, uuid string) error
+	Save(model.URLEnt) error
 }
 
 type URLSaveBatch interface {
@@ -29,12 +29,17 @@ type URLGetEntByURL interface {
 	GetEntByURL(url string) (model.URLEnt, error)
 }
 
+type GetterEntByUser interface {
+	GetEntByUser(userID string) (model.URLBatch, error)
+}
+
 type URLReaderWriter interface {
 	URLSave
 	URLGet
 	URLGetByURL
 	URLGetEntByURL
 	URLSaveBatch
+	GetterEntByUser
 }
 
 type URLService struct {
@@ -55,12 +60,12 @@ func (s URLService) ErrExistID() error {
 	return ErrExistID
 }
 
-func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDResp, error) {
+func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.CreateIDResp, error) {
 	data := model.CreateIDResp{}
 	var sErr error
 
 	// Проверяем что этот URL еще не добавлен
-	shortSt, err := s.repo.GetByURL(url)
+	shortSt, err := s.repo.GetByURL(urlEnt.OriginalURL)
 	if err != nil {
 		return &data, err
 	}
@@ -68,9 +73,9 @@ func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDRes
 		sErr = s.ErrExistID()
 	} else {
 		// Добавляем URL в хранилище
-		shortSt = lib.GenerateRandomAlphabetString(8)
-		uuid := uuid.New().String()
-		err := s.repo.Save(url, shortSt, uuid)
+		urlEnt.ShortURL = lib.GenerateRandomAlphabetString(8)
+		urlEnt.UUID = uuid.New().String()
+		err := s.repo.Save(urlEnt)
 		if err != nil {
 			return &data, err
 		}
@@ -107,7 +112,12 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 		}
 		shortSt := lib.GenerateRandomAlphabetString(8)
 		uuid := uuid.New().String()
-		prepData.URLS = append(prepData.URLS, model.URLEnt{OriginalURL: v.OriginalURL, ShortURL: shortSt, UUID: uuid})
+		prepData.URLS = append(prepData.URLS, model.URLEnt{
+			OriginalURL: v.OriginalURL,
+			ShortURL:    shortSt,
+			UUID:        uuid,
+			UserID:      req.UserID,
+		})
 	}
 
 	// Добавляем URL в хранилище
@@ -125,4 +135,8 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 	}
 
 	return data, nil
+}
+
+func (s URLService) GetURLByUser(userID string, opts shortener.Opts) (model.URLBatch, error) {
+	return s.repo.GetEntByUser(userID)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
+	apiGet "github.com/rebaxis/urlshrter/internal/handler/api/get"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
@@ -28,6 +29,7 @@ func CreateApp() fx.Option {
 			NewRepo,
 			NewURLService,
 			NewDBService,
+			NewJWTCookieService,
 			NewRouter,
 			NewServer,
 			NewOpts,
@@ -60,17 +62,23 @@ func NewDBService(repo repository.URLRepository) service.DBService {
 	return service.NewDBService(&repo)
 }
 
-func NewRouter(service service.URLService, dbService service.DBService, opts shortener.Opts) *chi.Mux {
+func NewJWTCookieService() service.JWTCookieService {
+	return *service.NewJWTCookieService(service.JWTCookieConfig{CookieName: "jwt_cookie", SecretKey: "09cdsgUa99Xmkfvs91xY7zK3pQ9mN1tR5vU8wJ2hB4cF6dE0aS8"})
+}
+
+func NewRouter(service service.URLService, dbService service.DBService, jwtCookieService service.JWTCookieService, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
+		mw.AvtorizationMw(&jwtCookieService),
 		mw.CompressMw,
 		mw.LoggingMw,
 	}
 
-	var mwAPIChain = append(mwChain, mw.ValidatingMw)
+	var mwAPIPostChain = append(mwChain, mw.ValidatingBodyMw)
 
 	r := chi.NewRouter()
-	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIChain...))
-	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIChain...))
+	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIPostChain...))
+	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIPostChain...))
+	r.Get("/api/user/urls", mw.BuildMwChain(apiGet.GetURLByUser(service, opts), mwChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwChain...))
 	r.Get("/ping", mw.BuildMwChain(get.PingDB(dbService), mwChain...))

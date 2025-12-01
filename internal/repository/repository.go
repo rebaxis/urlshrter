@@ -55,14 +55,19 @@ func NewURLRepository(opts shortener.Opts, dbIntrnl dbIntrnl.DBIntrnl) URLReposi
 }
 
 // //// Переделать только на SaveBatch
-func (r *URLRepository) Save(url string, shortSt string, uuid string) error {
-	r.Storage.URLS = append(r.Storage.URLS, model.URLEnt{UUID: uuid, ShortURL: shortSt, OriginalURL: url})
-	r.Storage.Cache.Set(shortSt, url, cache.DefaultExpiration)
-	r.Storage.ReverseCache.Set(url, shortSt, cache.DefaultExpiration)
+func (r *URLRepository) Save(urlEnt model.URLEnt) error {
+	r.Storage.URLS = append(r.Storage.URLS, urlEnt)
+	r.Storage.Cache.Set(urlEnt.ShortURL, urlEnt.OriginalURL, cache.DefaultExpiration)
+	r.Storage.ReverseCache.Set(urlEnt.OriginalURL, urlEnt.ShortURL, cache.DefaultExpiration)
 
 	// пишем в БД если она подключена
 	if r.UseDB {
-		_, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3)", uuid, shortSt, url)
+		_, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)",
+			urlEnt.UUID,
+			urlEnt.ShortURL,
+			urlEnt.OriginalURL,
+			urlEnt.UserID,
+		)
 		if err != nil {
 			return err
 		}
@@ -100,8 +105,12 @@ func (r *URLRepository) SaveBatch(batch model.URLBatch) error {
 		for _, v := range batch.URLS {
 			// все изменения записываются в транзакцию
 			_, err = tx.ExecContext(context.Background(),
-				"INSERT INTO urls (uuid, short_url, original_url) VALUES ($1, $2, $3)",
-				v.UUID, v.ShortURL, v.OriginalURL)
+				"INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)",
+				v.UUID,
+				v.ShortURL,
+				v.OriginalURL,
+				v.UserID,
+			)
 			if err != nil {
 				// если ошибка, то откатываем изменения
 				tx.Rollback()
@@ -188,4 +197,31 @@ func (r *URLRepository) GetEntByURL(url string) (model.URLEnt, error) {
 	}
 
 	return model.URLEnt{}, nil
+}
+
+func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
+	urls := model.URLBatch{}
+
+	// if shortURL, exists := r.Storage.ReverseCache.Get(url); exists {
+	// 	return model.URLEnt{ShortURL: shortURL.(string), OriginalURL: url, UUID: "-"}, nil
+	// }
+
+	if r.UseDB {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+		rows, err := r.StorageDB.QueryContext(ctx, "SELECT short_url,original_url,uuid,user_id FROM urls WHERE user_id=$1", userID)
+		if err != nil && err != sql.ErrNoRows {
+			return model.URLBatch{URLS: []model.URLEnt{}}, err
+		}
+
+		for rows.Next() {
+			var ent model.URLEnt
+			if err := rows.Scan(&ent.ShortURL, &ent.OriginalURL, &ent.UUID, &ent.UserID); err != nil {
+				return model.URLBatch{}, err
+			}
+			urls.URLS = append(urls.URLS, ent)
+		}
+	}
+
+	return urls, nil
 }

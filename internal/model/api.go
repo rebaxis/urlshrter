@@ -10,7 +10,8 @@ type (
 	}
 
 	CreateIDBatchReq struct {
-		Batch []BatchEntReq
+		Batch  []BatchEntReq
+		UserID string `json:"user_id" valid:"required"`
 	}
 
 	BatchEntReq struct {
@@ -25,5 +26,14 @@ type (
 	BatchEntResp struct {
 		CorrelationID string `json:"correlation_id" valid:"required"`
 		ShortURL      string `json:"short_url" valid:"required"`
+	}
+
+	BatchEntUserResp struct {
+		OriginalURL string `json:"original_url" valid:"required,url"`
+		ShortURL    string `json:"short_url" valid:"required"`
+	}
+
+	GetBatchEntUserResp struct {
+		Batch []BatchEntUserResp
 	}
 )
