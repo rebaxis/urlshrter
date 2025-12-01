@@ -44,6 +44,7 @@ func GetURLByUser(service service.URLService, opts shortener.Opts) http.HandlerF
 			}
 		}
 
+		w.Header().Add("Content-Type", "application/json")
 		w.WriteHeader(status)
 		w.Write(jsonData)
 	}

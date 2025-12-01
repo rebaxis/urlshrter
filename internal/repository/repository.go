@@ -221,6 +221,9 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 			}
 			urls.URLS = append(urls.URLS, ent)
 		}
+		if err := rows.Err(); err != nil {
+			return model.URLBatch{URLS: []model.URLEnt{}}, err
+		}
 	}
 
 	return urls, nil
