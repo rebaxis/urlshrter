@@ -28,7 +28,8 @@ func GetURLByUser(service service.URLService, opts shortener.Opts) http.HandlerF
 			status = http.StatusOK
 
 			for _, v := range data.URLS {
-				urls.Batch = append(urls.Batch, model.BatchEntUserResp{OriginalURL: v.OriginalURL, ShortURL: v.ShortURL})
+				shortURL := opts.BaseURL + "/" + v.ShortURL
+				urls.Batch = append(urls.Batch, model.BatchEntUserResp{OriginalURL: v.OriginalURL, ShortURL: shortURL})
 			}
 
 			// Проверяем тело ответа
