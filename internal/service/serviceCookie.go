@@ -20,6 +20,7 @@ type JWTCookieConfig struct {
 	Secure          bool
 	HTTPOnly        bool
 	SameSite        http.SameSite
+	MaxAge          int
 }
 
 type JWTCookieService struct {
@@ -42,6 +43,7 @@ func NewJWTCookieService(config JWTCookieConfig) *JWTCookieService {
 	}
 	config.Secure = true
 	config.HTTPOnly = true
+	config.MaxAge = 3600
 
 	return &JWTCookieService{
 		config: config,
@@ -99,6 +101,7 @@ func (j *JWTCookieService) SetJWTCookie(w http.ResponseWriter, userID string) er
 		Secure:   j.config.Secure,
 		HttpOnly: j.config.HTTPOnly,
 		SameSite: j.config.SameSite,
+		MaxAge:   j.config.MaxAge,
 	})
 
 	return nil
