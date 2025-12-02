@@ -212,6 +212,7 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 			fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 1")
 			return model.URLBatch{URLS: []model.URLEnt{}}, err
 		}
+		defer rows.Close()
 
 		for rows.Next() {
 			var ent model.URLEnt
