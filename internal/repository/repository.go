@@ -205,7 +205,7 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	if r.UseDB {
 		fmt.Println("!!!!!!!!!!!!!!!!!!! Обращаемся к БД")
 		fmt.Println("!!!!!!!!!!!!!!!!!!! User " + userID)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		rows, err := r.StorageDB.QueryContext(ctx, "SELECT short_url,original_url,uuid,user_id FROM urls WHERE user_id=$1", userID)
 		if err != nil && err != sql.ErrNoRows {
