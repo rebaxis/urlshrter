@@ -202,29 +202,32 @@ func (r *URLRepository) GetEntByURL(url string) (model.URLEnt, error) {
 func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	urls := model.URLBatch{}
 
-	// if shortURL, exists := r.Storage.ReverseCache.Get(url); exists {
-	// 	return model.URLEnt{ShortURL: shortURL.(string), OriginalURL: url, UUID: "-"}, nil
-	// }
-
 	if r.UseDB {
+		fmt.Println("!!!!!!!!!!!!!!!!!!! Обращаемся к БД")
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 		rows, err := r.StorageDB.QueryContext(ctx, "SELECT short_url,original_url,uuid,user_id FROM urls WHERE user_id=$1", userID)
 		if err != nil && err != sql.ErrNoRows {
+			fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 1")
 			return model.URLBatch{URLS: []model.URLEnt{}}, err
 		}
 
 		for rows.Next() {
 			var ent model.URLEnt
 			if err := rows.Scan(&ent.ShortURL, &ent.OriginalURL, &ent.UUID, &ent.UserID); err != nil {
+				fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 2")
 				return model.URLBatch{}, err
 			}
+			fmt.Println("!!!!!!!!!!!!!!!!!!! Получили УРЛЫ")
 			urls.URLS = append(urls.URLS, ent)
 		}
 		if err := rows.Err(); err != nil {
+			fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 3")
 			return model.URLBatch{URLS: []model.URLEnt{}}, err
 		}
 	}
+
+	fmt.Printf("!!!!!!!!!!!!!!!!!!! Возвращаем URLs %v", urls)
 
 	return urls, nil
 }
