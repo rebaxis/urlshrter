@@ -157,7 +157,7 @@ func AvtorizationMw(jwtCookieService JWTCookieManager) Middleware {
 	return func(h http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := jwtCookieService.GetClaimsFromRequest(r)
-			if err == http.ErrNoCookie || err == service.ErrInvalidToken {
+			if err == http.ErrNoCookie {
 				userID := lib.GenerateRandomAlphabetString(6)
 				err = jwtCookieService.SetJWTCookie(w, userID)
 				if err != nil {
