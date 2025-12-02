@@ -62,12 +62,14 @@ func (r *URLRepository) Save(urlEnt model.URLEnt) error {
 
 	// пишем в БД если она подключена
 	if r.UseDB {
-		_, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)",
+		res, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)",
 			urlEnt.UUID,
 			urlEnt.ShortURL,
 			urlEnt.OriginalURL,
 			urlEnt.UserID,
 		)
+		v, _ := res.RowsAffected()
+		fmt.Printf("!!!!!!!!!!!!!!!!!!!!! SAVE TO DB: %v\n", v)
 		if err != nil {
 			return err
 		}
