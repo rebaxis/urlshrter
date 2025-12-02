@@ -88,13 +88,13 @@ func (j *JWTCookieService) parseToken(tokenString string) (*Claims, error) {
 }
 
 // SetTokenCookie устанавливает JWT токен в cookie
-func (j *JWTCookieService) SetJWTCookie(w http.ResponseWriter, userID string) error {
+func (j *JWTCookieService) SetJWTCookie(w *http.ResponseWriter, userID string) error {
 	token, err := j.generateToken(userID)
 	if err != nil {
 		return err
 	}
 
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(*w, &http.Cookie{
 		Name:     j.config.CookieName,
 		Value:    token,
 		Expires:  j.config.TokenExpiration,

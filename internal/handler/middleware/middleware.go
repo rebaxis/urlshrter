@@ -3,11 +3,13 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
 	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/service"
@@ -144,7 +146,7 @@ type (
 	}
 
 	JWTCookieSetter interface {
-		SetJWTCookie(w http.ResponseWriter, userID string) error
+		SetJWTCookie(w *http.ResponseWriter, userID string) error
 	}
 
 	JWTCookieManager interface {
@@ -157,9 +159,9 @@ func AvtorizationMw(jwtCookieService JWTCookieManager) Middleware {
 	return func(h http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := jwtCookieService.GetClaimsFromRequest(r)
-			if err == http.ErrNoCookie {
+			if err == http.ErrNoCookie || err == service.ErrInvalidToken || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
 				userID := lib.GenerateRandomAlphabetString(6)
-				err = jwtCookieService.SetJWTCookie(w, userID)
+				err = jwtCookieService.SetJWTCookie(&w, userID)
 				if err != nil {
 					http.Error(w, "Some problem: "+err.Error(), http.StatusBadRequest)
 					return
