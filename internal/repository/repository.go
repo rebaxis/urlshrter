@@ -68,6 +68,7 @@ func (r *URLRepository) Save(urlEnt model.URLEnt) error {
 			urlEnt.OriginalURL,
 			urlEnt.UserID,
 		)
+		fmt.Printf("!!!!!!!!!!!!!!!!!!!!! SAVE TO DB THIS: %v\n", urlEnt)
 		v, _ := res.RowsAffected()
 		fmt.Printf("!!!!!!!!!!!!!!!!!!!!! SAVE TO DB: %v\n", v)
 		if err != nil {
