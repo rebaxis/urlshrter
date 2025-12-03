@@ -54,12 +54,11 @@ func NewJWTCookieService(config JWTCookieConfig) *JWTCookieService {
 func (j *JWTCookieService) generateToken(userID string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
-		// UserData: userData,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(j.config.TokenExpiration),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "jwt-cookie-manager",
+			// 	ExpiresAt: jwt.NewNumericDate(j.config.TokenExpiration),
+			// 	IssuedAt:  jwt.NewNumericDate(time.Now()),
+			// 	NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer: "jwt-cookie-manager",
 		},
 	}
 
