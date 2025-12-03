@@ -103,11 +103,16 @@ func (j *JWTCookieService) SetJWTCookie(w *http.ResponseWriter, userID string) e
 		MaxAge:   j.config.MaxAge,
 	})
 
+	fmt.Println("КУКА УСТАНОВЛЕНА ДЛЯ " + userID)
+	fmt.Println("НАЗВАНИЕ КУКИ " + j.config.CookieName)
+
 	return nil
 }
 
 // GetClaimsFromRequest извлекает claims из cookie запроса
 func (j *JWTCookieService) GetClaimsFromRequest(r *http.Request) (*Claims, error) {
+	fmt.Println("ИЗВЛЕКАЕМ ИЗ КУКИ claims")
+	fmt.Println("НАЗВАНИЕ КУКИ " + j.config.CookieName)
 	cookie, err := r.Cookie(j.config.CookieName)
 	if err != nil {
 		return nil, err
