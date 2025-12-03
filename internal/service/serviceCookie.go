@@ -113,6 +113,8 @@ func (j *JWTCookieService) SetJWTCookie(w *http.ResponseWriter, userID string) e
 func (j *JWTCookieService) GetClaimsFromRequest(r *http.Request) (*Claims, error) {
 	fmt.Println("ИЗВЛЕКАЕМ ИЗ КУКИ claims")
 	fmt.Println("НАЗВАНИЕ КУКИ " + j.config.CookieName)
+	cookies := r.CookiesNamed(j.config.CookieName)
+	fmt.Printf("ПРИШЛИ КУКИ %v", cookies)
 	cookie, err := r.Cookie(j.config.CookieName)
 	if err != nil {
 		fmt.Println("ОШИБКА ИЗВЛЕЧЕНИЯ КУКИ " + err.Error())
