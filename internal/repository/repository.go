@@ -62,15 +62,12 @@ func (r *URLRepository) Save(urlEnt model.URLEnt) error {
 
 	// пишем в БД если она подключена
 	if r.UseDB {
-		res, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)",
+		_, err := r.StorageDB.Exec("INSERT INTO urls (uuid, short_url, original_url, user_id) VALUES ($1, $2, $3, $4)",
 			urlEnt.UUID,
 			urlEnt.ShortURL,
 			urlEnt.OriginalURL,
 			urlEnt.UserID,
 		)
-		fmt.Printf("!!!!!!!!!!!!!!!!!!!!! SAVE TO DB THIS: %v\n", urlEnt)
-		v, _ := res.RowsAffected()
-		fmt.Printf("!!!!!!!!!!!!!!!!!!!!! SAVE TO DB: %v\n", v)
 		if err != nil {
 			return err
 		}
@@ -206,13 +203,10 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	urls := model.URLBatch{}
 
 	if r.UseDB {
-		fmt.Println("!!!!!!!!!!!!!!!!!!! Обращаемся к БД")
-		fmt.Println("!!!!!!!!!!!!!!!!!!! User " + userID)
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		rows, err := r.StorageDB.QueryContext(ctx, "SELECT short_url,original_url,uuid,user_id FROM urls WHERE user_id=$1", userID)
 		if err != nil && err != sql.ErrNoRows {
-			fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 1")
 			return model.URLBatch{URLS: []model.URLEnt{}}, err
 		}
 		defer rows.Close()
@@ -220,19 +214,14 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 		for rows.Next() {
 			var ent model.URLEnt
 			if err := rows.Scan(&ent.ShortURL, &ent.OriginalURL, &ent.UUID, &ent.UserID); err != nil {
-				fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 2")
 				return model.URLBatch{}, err
 			}
-			fmt.Println("!!!!!!!!!!!!!!!!!!! Получили УРЛЫ")
 			urls.URLS = append(urls.URLS, ent)
 		}
 		if err := rows.Err(); err != nil {
-			fmt.Println("!!!!!!!!!!!!!!!!!!! Ошибка 3")
 			return model.URLBatch{URLS: []model.URLEnt{}}, err
 		}
 	}
-
-	fmt.Printf("!!!!!!!!!!!!!!!!!!! Возвращаем URLs %v", urls)
 
 	return urls, nil
 }

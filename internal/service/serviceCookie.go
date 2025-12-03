@@ -20,7 +20,6 @@ type JWTCookieConfig struct {
 	Secure          bool
 	HTTPOnly        bool
 	SameSite        http.SameSite
-	MaxAge          int
 }
 
 type JWTCookieService struct {
@@ -42,8 +41,7 @@ func NewJWTCookieService(config JWTCookieConfig) *JWTCookieService {
 		config.SameSite = http.SameSiteLaxMode
 	}
 	config.Secure = false
-	config.HTTPOnly = false
-	config.MaxAge = 3600
+	config.HTTPOnly = true
 
 	return &JWTCookieService{
 		config: config,
@@ -55,10 +53,10 @@ func (j *JWTCookieService) generateToken(userID string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			// 	ExpiresAt: jwt.NewNumericDate(j.config.TokenExpiration),
-			// 	IssuedAt:  jwt.NewNumericDate(time.Now()),
-			// 	NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer: "jwt-cookie-manager",
+			ExpiresAt: jwt.NewNumericDate(j.config.TokenExpiration),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "jwt-cookie-manager",
 		},
 	}
 
@@ -100,22 +98,15 @@ func (j *JWTCookieService) SetJWTCookie(w *http.ResponseWriter, userID string) e
 		Secure:   j.config.Secure,
 		HttpOnly: j.config.HTTPOnly,
 		SameSite: j.config.SameSite,
-		MaxAge:   j.config.MaxAge,
 	})
-
-	fmt.Println("КУКА УСТАНОВЛЕНА ДЛЯ " + userID)
-	fmt.Println("НАЗВАНИЕ КУКИ " + j.config.CookieName)
 
 	return nil
 }
 
 // GetClaimsFromRequest извлекает claims из cookie запроса
 func (j *JWTCookieService) GetClaimsFromRequest(r *http.Request) (*Claims, error) {
-	fmt.Println("ИЗВЛЕКАЕМ ИЗ КУКИ claims")
-	fmt.Println("НАЗВАНИЕ КУКИ " + j.config.CookieName)
 	cookie, err := r.Cookie(j.config.CookieName)
 	if err != nil {
-		fmt.Println("ОШИБКА ИЗВЛЕЧЕНИЯ КУКИ " + err.Error())
 		return nil, err
 	}
 
