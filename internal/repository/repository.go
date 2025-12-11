@@ -225,3 +225,44 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 
 	return urls, nil
 }
+
+func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.DeleteURLRecord) {
+	var userIDs []string
+	var urls []string
+
+	for record := range out {
+		userIDs = append(userIDs, record.UserID)
+		urls = append(urls, record.ShortURL)
+	}
+
+	// пишем в БД если она подключена
+	if r.UseDB {
+		// начинаем транзакцию
+		tx, err := r.StorageDB.Begin()
+		if err != nil {
+			return
+		}
+
+		query := `
+			UPDATE urls 
+			SET is_deleted = true 
+			FROM unnest($1::text[], $2::text[]) AS data(user_id, short_url)
+			WHERE urls.user_id = data.user_id 
+			AND urls.short_url = data.short_url
+			AND urls.is_deleted = false
+		`
+		// все изменения записываются в транзакцию
+		_, err = tx.ExecContext(ctx,
+			query,
+			userIDs,
+			urls,
+		)
+		if err != nil {
+			// если ошибка, то откатываем изменения
+			tx.Rollback()
+		}
+		// завершаем транзакцию
+		tx.Commit()
+	}
+
+}

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/uuid"
@@ -33,6 +34,10 @@ type GetterEntByUser interface {
 	GetEntByUser(userID string) (model.URLBatch, error)
 }
 
+type DeleterURLByUser interface {
+	DeleteURLByUser(ctx context.Context, ch chan model.DeleteURLRecord)
+}
+
 type URLReaderWriter interface {
 	URLSave
 	URLGet
@@ -40,6 +45,7 @@ type URLReaderWriter interface {
 	URLGetEntByURL
 	URLSaveBatch
 	GetterEntByUser
+	DeleterURLByUser
 }
 
 type URLService struct {
@@ -140,4 +146,27 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 
 func (s URLService) GetURLByUser(userID string, opts shortener.Opts) (model.URLBatch, error) {
 	return s.repo.GetEntByUser(userID)
+}
+
+func (s URLService) DeleteURLRecordsBuffered(ctx context.Context, request model.DeleteURLBatch, bufferSize int) {
+	out := make(chan model.DeleteURLRecord, bufferSize)
+
+	go func() {
+		defer close(out)
+
+		for _, url := range request.Batch {
+			record := model.DeleteURLRecord{
+				UserID:   request.UserID,
+				ShortURL: url,
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case out <- record:
+			}
+		}
+	}()
+
+	s.repo.DeleteURLByUser(ctx, out)
 }

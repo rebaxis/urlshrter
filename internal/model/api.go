@@ -36,4 +36,8 @@ type (
 	GetBatchEntUserResp struct {
 		Batch []BatchEntUserResp
 	}
+
+	BatchDeleteEntByUserReq struct {
+		ShortURLs []string `valid:"required"`
+	}
 )

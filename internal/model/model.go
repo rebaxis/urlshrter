@@ -21,4 +21,15 @@ type (
 	URLBatch struct {
 		URLS []URLEnt
 	}
+
+	DeleteURLBatch struct {
+		UserID string
+		Batch  []string
+	}
+
+	// Структура для URL после fan-in
+	DeleteURLRecord struct {
+		UserID   string
+		ShortURL string
+	}
 )
