@@ -238,6 +238,14 @@ func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.Dele
 	for record := range out {
 		userIDs = append(userIDs, record.UserID)
 		urls = append(urls, record.ShortURL)
+		if ent, exists := r.Storage.Cache.Get(record.ShortURL); exists {
+			tmpEnt := ent.(model.URLEnt)
+			if tmpEnt.UserID == record.UserID {
+				tmpEnt.IsDeleted = true
+				r.Storage.Cache.Set(record.ShortURL, tmpEnt, cache.DefaultExpiration)
+				r.Storage.ReverseCache.Set(tmpEnt.OriginalURL, tmpEnt, cache.DefaultExpiration)
+			}
+		}
 	}
 
 	// пишем в БД если она подключена
