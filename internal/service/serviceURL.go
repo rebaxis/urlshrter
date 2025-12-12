@@ -19,11 +19,11 @@ type URLSaveBatch interface {
 }
 
 type URLGet interface {
-	Get(id string) (string, error)
+	Get(id string) (model.URLEnt, error)
 }
 
 type URLGetByURL interface {
-	GetByURL(url string) (string, error)
+	GetByURL(url string) (model.URLEnt, error)
 }
 
 type URLGetEntByURL interface {
@@ -59,11 +59,16 @@ func NewURLService(repo URLReaderWriter) URLService {
 }
 
 var (
-	ErrExistID = errors.New("this URL already has short name")
+	ErrExistID   = errors.New("this URL already has short name")
+	ErrDeletedID = errors.New("this URL was deleted")
 )
 
 func (s URLService) ErrExistID() error {
 	return ErrExistID
+}
+
+func (s URLService) ErrDeletedID() error {
+	return ErrDeletedID
 }
 
 func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.CreateIDResp, error) {
@@ -71,15 +76,16 @@ func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.Cr
 	var sErr error
 
 	// Проверяем что этот URL еще не добавлен
-	shortSt, err := s.repo.GetByURL(urlEnt.OriginalURL)
+	ent, err := s.repo.GetByURL(urlEnt.OriginalURL)
 	if err != nil {
 		return &data, err
 	}
-	if shortSt != "" {
+	if ent != (model.URLEnt{}) {
+		urlEnt = ent
 		sErr = s.ErrExistID()
 	} else {
 		// Добавляем URL в хранилище
-		shortSt = lib.GenerateRandomAlphabetString(8)
+		shortSt := lib.GenerateRandomAlphabetString(8)
 		urlEnt.ShortURL = shortSt
 		urlEnt.UUID = uuid.New().String()
 		err := s.repo.Save(urlEnt)
@@ -89,18 +95,23 @@ func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.Cr
 	}
 
 	data = model.CreateIDResp{
-		Result: opts.BaseURL + "/" + shortSt,
+		Result: opts.BaseURL + "/" + urlEnt.ShortURL,
 	}
 
 	return &data, sErr
 }
 
 func (s URLService) GetURL(id string) (string, error) {
-	url, err := s.repo.Get(id)
+	ent, err := s.repo.Get(id)
 	if err != nil {
 		return "", err
 	}
-	return url, nil
+
+	if ent.IsDeleted {
+		return "", s.ErrDeletedID()
+	}
+
+	return ent.OriginalURL, nil
 }
 
 func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts) (model.URLBatch, error) {
@@ -113,7 +124,7 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 			return model.URLBatch{}, err
 		}
 
-		if res.ShortURL != "" {
+		if res != (model.URLEnt{}) {
 			data.URLS = append(data.URLS, res)
 			continue
 		}

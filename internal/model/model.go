@@ -16,6 +16,7 @@ type (
 		ShortURL    string `json:"short_url" valid:"required"`
 		OriginalURL string `json:"original_url" valid:"required,url"`
 		UserID      string `json:"user_id" valid:"required"`
+		IsDeleted   bool   `json:"is_deleted" valid:"required"`
 	}
 
 	URLBatch struct {

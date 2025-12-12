@@ -1,6 +1,7 @@
 package get
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/rebaxis/urlshrter/internal/service"
@@ -8,23 +9,24 @@ import (
 
 func GetURLByID(service service.URLService) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
-		// Возвращаем URL
 		idString := req.PathValue("id")
 
 		url, err := service.GetURL(idString)
-		if err != nil {
-			http.Error(res, "Some internal problem: "+err.Error(), http.StatusInternalServerError)
+		if err != nil && !errors.Is(err, service.ErrDeletedID()) {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if url == "" && !errors.Is(err, service.ErrDeletedID()) {
+			http.Error(res, "There isn't URL with this id "+idString, http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrDeletedID()) {
+			res.WriteHeader(http.StatusGone)
 			return
 		}
 
-		if url == "" {
-			http.Error(res, "There isn't URL with this id "+idString, http.StatusBadRequest)
-			return
-		} else {
-			res.Header().Add("Location", url)
-			res.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
+		res.Header().Add("Location", url)
+		res.WriteHeader(http.StatusTemporaryRedirect)
 	}
 }
 
