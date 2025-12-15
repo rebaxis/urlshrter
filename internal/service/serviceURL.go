@@ -35,7 +35,7 @@ type GetterEntByUser interface {
 }
 
 type DeleterURLByUser interface {
-	DeleteURLByUser(ctx context.Context, ch chan model.DeleteURLRecord)
+	DeleteURLByUser(ctx context.Context, ch chan model.DeleteURLRecord) error
 }
 
 type URLReaderWriter interface {
@@ -159,7 +159,7 @@ func (s URLService) GetURLByUser(userID string, opts shortener.Opts) (model.URLB
 	return s.repo.GetEntByUser(userID)
 }
 
-func (s URLService) DeleteURLRecordsBuffered(ctx context.Context, request model.DeleteURLBatch, bufferSize int) {
+func (s URLService) DeleteURLRecordsBuffered(ctx context.Context, request model.DeleteURLBatch, bufferSize int) error {
 	out := make(chan model.DeleteURLRecord, bufferSize)
 
 	go func() {
@@ -179,5 +179,9 @@ func (s URLService) DeleteURLRecordsBuffered(ctx context.Context, request model.
 		}
 	}()
 
-	s.repo.DeleteURLByUser(ctx, out)
+	if err := s.repo.DeleteURLByUser(ctx, out); err != nil {
+		return err
+	}
+
+	return nil
 }

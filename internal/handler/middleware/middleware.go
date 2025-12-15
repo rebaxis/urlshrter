@@ -155,7 +155,7 @@ type (
 	}
 )
 
-func AvtorizationMw(jwtCookieService JWTCookieManager) Middleware {
+func AuthorizationMw(jwtCookieService JWTCookieManager) Middleware {
 	return func(h http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := jwtCookieService.GetClaimsFromRequest(r)

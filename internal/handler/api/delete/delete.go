@@ -22,8 +22,6 @@ func DeleteURLByUser(service service.URLService, opts shortener.Opts) http.Handl
 			return
 		}
 
-		status := http.StatusAccepted
-
 		body, _ := io.ReadAll(r.Body)
 		r.Body.Close()
 		var jsBody model.BatchDeleteEntByUserReq
@@ -39,9 +37,13 @@ func DeleteURLByUser(service service.URLService, opts shortener.Opts) http.Handl
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		service.DeleteURLRecordsBuffered(ctx, model.DeleteURLBatch{UserID: r.Header.Get("X-User-ID"), Batch: jsBody.ShortURLs}, len(jsBody.ShortURLs))
+		err := service.DeleteURLRecordsBuffered(ctx, model.DeleteURLBatch{UserID: r.Header.Get("X-User-ID"), Batch: jsBody.ShortURLs}, len(jsBody.ShortURLs))
+		if err != nil {
+			http.Error(w, "Some internal error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Add("Content-Type", "application/json")
-		w.WriteHeader(status)
+		w.WriteHeader(http.StatusAccepted)
 	}
 }

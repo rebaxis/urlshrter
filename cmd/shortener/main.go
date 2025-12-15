@@ -63,13 +63,13 @@ func NewDBService(repo repository.URLRepository) service.DBService {
 	return service.NewDBService(&repo)
 }
 
-func NewJWTCookieService() service.JWTCookieService {
-	return *service.NewJWTCookieService(service.JWTCookieConfig{CookieName: "jwt_cookie", SecretKey: "09cdsgUa99Xmkfvs91xY7zK3pQ9mN1tR5vU8wJ2hB4cF6dE0aS8"})
+func NewJWTCookieService(opts shortener.Opts) service.JWTCookieService {
+	return *service.NewJWTCookieService(service.JWTCookieConfig{CookieName: "jwt_cookie", SecretKey: opts.EncryptionKey})
 }
 
 func NewRouter(service service.URLService, dbService service.DBService, jwtCookieService service.JWTCookieService, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
-		mw.AvtorizationMw(&jwtCookieService),
+		mw.AuthorizationMw(&jwtCookieService),
 		mw.CompressMw,
 		mw.LoggingMw,
 	}

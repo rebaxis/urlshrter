@@ -231,7 +231,7 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	return urls, nil
 }
 
-func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.DeleteURLRecord) {
+func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.DeleteURLRecord) error {
 	var userIDs []string
 	var urls []string
 
@@ -253,7 +253,7 @@ func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.Dele
 		// начинаем транзакцию
 		tx, err := r.StorageDB.Begin()
 		if err != nil {
-			return
+			return err
 		}
 
 		query := `
@@ -273,9 +273,11 @@ func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.Dele
 		if err != nil {
 			// если ошибка, то откатываем изменения
 			tx.Rollback()
+			return err
 		}
 		// завершаем транзакцию
 		tx.Commit()
 	}
 
+	return nil
 }
