@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/uuid"
@@ -10,7 +11,7 @@ import (
 )
 
 type URLSave interface {
-	Save(url string, shortSt string, uuid string) error
+	Save(model.URLEnt) error
 }
 
 type URLSaveBatch interface {
@@ -18,15 +19,23 @@ type URLSaveBatch interface {
 }
 
 type URLGet interface {
-	Get(id string) (string, error)
+	Get(id string) (model.URLEnt, error)
 }
 
 type URLGetByURL interface {
-	GetByURL(url string) (string, error)
+	GetByURL(url string) (model.URLEnt, error)
 }
 
 type URLGetEntByURL interface {
 	GetEntByURL(url string) (model.URLEnt, error)
+}
+
+type GetterEntByUser interface {
+	GetEntByUser(userID string) (model.URLBatch, error)
+}
+
+type DeleterURLByUser interface {
+	DeleteURLByUser(ctx context.Context, ch chan model.DeleteURLRecord) error
 }
 
 type URLReaderWriter interface {
@@ -35,6 +44,8 @@ type URLReaderWriter interface {
 	URLGetByURL
 	URLGetEntByURL
 	URLSaveBatch
+	GetterEntByUser
+	DeleterURLByUser
 }
 
 type URLService struct {
@@ -48,47 +59,59 @@ func NewURLService(repo URLReaderWriter) URLService {
 }
 
 var (
-	ErrExistID = errors.New("this URL already has short name")
+	ErrExistID   = errors.New("this URL already has short name")
+	ErrDeletedID = errors.New("this URL was deleted")
 )
 
 func (s URLService) ErrExistID() error {
 	return ErrExistID
 }
 
-func (s URLService) SaveURL(url string, opts shortener.Opts) (*model.CreateIDResp, error) {
+func (s URLService) ErrDeletedID() error {
+	return ErrDeletedID
+}
+
+func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.CreateIDResp, error) {
 	data := model.CreateIDResp{}
 	var sErr error
 
 	// Проверяем что этот URL еще не добавлен
-	shortSt, err := s.repo.GetByURL(url)
+	ent, err := s.repo.GetByURL(urlEnt.OriginalURL)
 	if err != nil {
 		return &data, err
 	}
-	if shortSt != "" {
+	if ent != (model.URLEnt{}) {
+		urlEnt = ent
 		sErr = s.ErrExistID()
 	} else {
 		// Добавляем URL в хранилище
-		shortSt = lib.GenerateRandomAlphabetString(8)
-		uuid := uuid.New().String()
-		err := s.repo.Save(url, shortSt, uuid)
+		shortSt := lib.GenerateRandomAlphabetString(8)
+		urlEnt.ShortURL = shortSt
+		urlEnt.UUID = uuid.New().String()
+		err := s.repo.Save(urlEnt)
 		if err != nil {
 			return &data, err
 		}
 	}
 
 	data = model.CreateIDResp{
-		Result: opts.BaseURL + "/" + shortSt,
+		Result: opts.BaseURL + "/" + urlEnt.ShortURL,
 	}
 
 	return &data, sErr
 }
 
 func (s URLService) GetURL(id string) (string, error) {
-	url, err := s.repo.Get(id)
+	ent, err := s.repo.Get(id)
 	if err != nil {
 		return "", err
 	}
-	return url, nil
+
+	if ent.IsDeleted {
+		return "", s.ErrDeletedID()
+	}
+
+	return ent.OriginalURL, nil
 }
 
 func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts) (model.URLBatch, error) {
@@ -101,13 +124,18 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 			return model.URLBatch{}, err
 		}
 
-		if res.ShortURL != "" {
+		if res != (model.URLEnt{}) {
 			data.URLS = append(data.URLS, res)
 			continue
 		}
 		shortSt := lib.GenerateRandomAlphabetString(8)
 		uuid := uuid.New().String()
-		prepData.URLS = append(prepData.URLS, model.URLEnt{OriginalURL: v.OriginalURL, ShortURL: shortSt, UUID: uuid})
+		prepData.URLS = append(prepData.URLS, model.URLEnt{
+			OriginalURL: v.OriginalURL,
+			ShortURL:    shortSt,
+			UUID:        uuid,
+			UserID:      req.UserID,
+		})
 	}
 
 	// Добавляем URL в хранилище
@@ -125,4 +153,35 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 	}
 
 	return data, nil
+}
+
+func (s URLService) GetURLByUser(userID string, opts shortener.Opts) (model.URLBatch, error) {
+	return s.repo.GetEntByUser(userID)
+}
+
+func (s URLService) DeleteURLRecordsBuffered(ctx context.Context, request model.DeleteURLBatch, bufferSize int) error {
+	out := make(chan model.DeleteURLRecord, bufferSize)
+
+	go func() {
+		defer close(out)
+
+		for _, url := range request.Batch {
+			record := model.DeleteURLRecord{
+				UserID:   request.UserID,
+				ShortURL: url,
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case out <- record:
+			}
+		}
+	}()
+
+	if err := s.repo.DeleteURLByUser(ctx, out); err != nil {
+		return err
+	}
+
+	return nil
 }

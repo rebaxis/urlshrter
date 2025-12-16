@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
@@ -37,7 +38,11 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 
 		status := http.StatusCreated
 
-		data, err := service.SaveURL(pURL.String(), opts)
+		var urlEnt model.URLEnt
+		urlEnt.OriginalURL = pURL.String()
+		urlEnt.UserID = req.Header.Get("X-User-ID")
+
+		data, err := service.SaveURL(urlEnt, opts)
 
 		if err != nil && !errors.Is(err, service.ErrExistID()) {
 			http.Error(res, err.Error(), http.StatusInternalServerError)

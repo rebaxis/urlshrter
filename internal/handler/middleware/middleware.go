@@ -3,12 +3,16 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
+	"github.com/rebaxis/urlshrter/internal/lib"
+	"github.com/rebaxis/urlshrter/internal/service"
 )
 
 type (
@@ -120,7 +124,7 @@ var CompressMw = func(h http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-var ValidatingMw = func(h http.HandlerFunc) http.HandlerFunc {
+var ValidatingBodyMw = func(h http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем что тело запроса не пустое
 		body, err := io.ReadAll(r.Body)
@@ -134,6 +138,53 @@ var ValidatingMw = func(h http.HandlerFunc) http.HandlerFunc {
 
 		h.ServeHTTP(w, r)
 	})
+}
+
+type (
+	ClaimsGetter interface {
+		GetClaimsFromRequest(r *http.Request) (*service.Claims, error)
+	}
+
+	JWTCookieSetter interface {
+		SetJWTCookie(w *http.ResponseWriter, userID string) error
+	}
+
+	JWTCookieManager interface {
+		ClaimsGetter
+		JWTCookieSetter
+	}
+)
+
+func AuthorizationMw(jwtCookieService JWTCookieManager) Middleware {
+	return func(h http.HandlerFunc) http.HandlerFunc {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, err := jwtCookieService.GetClaimsFromRequest(r)
+			if err == http.ErrNoCookie || err == service.ErrInvalidToken || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
+				userID := lib.GenerateRandomAlphabetString(6)
+				err = jwtCookieService.SetJWTCookie(&w, userID)
+				if err != nil {
+					http.Error(w, "Some problem: "+err.Error(), http.StatusBadRequest)
+					return
+				}
+				r.Header.Add("X-User-ID", userID)
+				h.ServeHTTP(w, r)
+				return
+			}
+			if err != nil {
+				http.Error(w, "Some problem: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			if claims.UserID != "" {
+				r.Header.Add("X-User-ID", claims.UserID)
+			} else {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			h.ServeHTTP(w, r)
+		})
+	}
 }
 
 func BuildMwChain(f http.HandlerFunc, m ...Middleware) http.HandlerFunc {

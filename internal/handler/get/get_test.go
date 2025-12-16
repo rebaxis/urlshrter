@@ -11,6 +11,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
+	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
 	"github.com/stretchr/testify/assert"
@@ -60,10 +61,12 @@ func TestGetURLByID(t *testing.T) {
 			dbIntrnlTest, _ := dbIntrnl.NewDB(opts)
 			repo := repository.NewURLRepository(opts, dbIntrnlTest)
 
+			entTest := model.URLEnt{OriginalURL: test.want.locationHader, ShortURL: test.requestTo.id}
+
 			repo.Storage.Cache = cache.New(-1*time.Minute, 1*time.Minute)
-			repo.Storage.Cache.Set(test.requestTo.id, test.want.locationHader, cache.DefaultExpiration)
+			repo.Storage.Cache.Set(test.requestTo.id, entTest, cache.DefaultExpiration)
 			repo.Storage.ReverseCache = cache.New(-1*time.Minute, 1*time.Minute)
-			repo.Storage.ReverseCache.Set(test.want.locationHader, test.requestTo.id, cache.DefaultExpiration)
+			repo.Storage.ReverseCache.Set(test.want.locationHader, entTest, cache.DefaultExpiration)
 
 			service := service.NewURLService(&repo)
 

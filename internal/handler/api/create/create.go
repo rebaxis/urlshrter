@@ -35,7 +35,10 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 			return
 		}
 
-		data, err := service.SaveURL(jsBody.URL, opts)
+		var urlEnt model.URLEnt
+		urlEnt.OriginalURL = jsBody.URL
+		urlEnt.UserID = r.Header.Get("X-User-ID")
+		data, err := service.SaveURL(urlEnt, opts)
 		if err != nil && !errors.Is(err, service.ErrExistID()) {
 			http.Error(w, "Some problem on server: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -78,6 +81,7 @@ func CreateIDBatch(service service.URLService, opts shortener.Opts) http.Handler
 			http.Error(w, "Body must be valid JSON! "+err.Error(), http.StatusBadRequest)
 			return
 		}
+		jsBody.UserID = r.Header.Get("X-User-ID")
 		if _, err := validator.ValidateStruct(jsBody); err != nil {
 			http.Error(w, "Your JSON has a problem: "+err.Error(), http.StatusBadRequest)
 			return
