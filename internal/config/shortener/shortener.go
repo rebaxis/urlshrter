@@ -15,6 +15,8 @@ type Opts struct {
 	StorageFile   string `env:"FILE_STORAGE_PATH"`
 	DatabaseDSN   string `env:"DATABASE_DSN"`
 	EncryptionKey string `env:"ENCRYPTION_KEY"`
+	AuditFile     string `env:"AUDIT_FILE"`
+	AuditURL      string `env:"AUDIT_URL"`
 }
 
 func GetOpts() Opts {
@@ -24,6 +26,8 @@ func GetOpts() Opts {
 		StorageFile:   `C:\Users\Public\Documents\urlshrter.json`,
 		DatabaseDSN:   "",
 		EncryptionKey: lib.GenerateRandomAlphabetString(50),
+		AuditFile:     "",
+		AuditURL:      "",
 	}
 
 	var envs Opts
@@ -39,6 +43,8 @@ func GetOpts() Opts {
 	flag.StringVarP(&flags.StorageFile, "storageFile", "f", "", "Path to storage file")
 	flag.StringVarP(&flags.DatabaseDSN, "databaseDSN", "d", "", "Database address")
 	flag.StringVarP(&flags.EncryptionKey, "encryptionKey", "k", "", "Encryption Key")
+	flag.StringVar(&flags.AuditFile, "audit-file", "", "Path to audit log file")
+	flag.StringVar(&flags.AuditURL, "audit-url", "", "URL to send audit events")
 	flag.Parse()
 
 	if flags.Address != "" {
@@ -68,6 +74,22 @@ func GetOpts() Opts {
 	}
 	if envs.DatabaseDSN != "" {
 		opts.DatabaseDSN = envs.DatabaseDSN
+	}
+	if envs.EncryptionKey != "" {
+		opts.EncryptionKey = envs.EncryptionKey
+	}
+	if envs.AuditFile != "" {
+		opts.AuditFile = envs.AuditFile
+	}
+	if envs.AuditURL != "" {
+		opts.AuditURL = envs.AuditURL
+	}
+
+	if flags.AuditFile != "" {
+		opts.AuditFile = flags.AuditFile
+	}
+	if flags.AuditURL != "" {
+		opts.AuditURL = flags.AuditURL
 	}
 
 	if _, err := url.ParseRequestURI(opts.BaseURL); err != nil {
