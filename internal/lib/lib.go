@@ -1,17 +1,22 @@
 package lib
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+var alphabetLen = big.NewInt(int64(len(alphabet)))
+
 func GenerateRandomAlphabetString(length int) string {
-	seededRand := rand.New(rand.NewSource(time.Now().UnixNano() + rand.Int63()))
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = alphabet[seededRand.Intn(len(alphabet))]
+		num, err := rand.Int(rand.Reader, alphabetLen)
+		if err != nil {
+			panic("failed to generate random number: " + err.Error())
+		}
+		b[i] = alphabet[num.Int64()]
 	}
 	return string(b)
 }

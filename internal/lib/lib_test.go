@@ -26,3 +26,10 @@ func TestGenerateRandomAlphabetString(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkGenerateRandomAlphabetString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = lib.GenerateRandomAlphabetString(8)
+	}
+}

@@ -4,6 +4,10 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"runtime"
+	"runtime/pprof"
 
 	chi "github.com/go-chi/chi/v5"
 	"github.com/rebaxis/urlshrter/internal/audit"
@@ -105,6 +109,11 @@ func NewRouter(service service.URLService, dbService service.DBService, jwtCooki
 	var mwFollowChain = append(mwChain, mw.AuditMw("follow", auditSubject))
 
 	r := chi.NewRouter()
+
+	// Debug/pprof endpoints
+	r.Mount("/debug/pprof", http.DefaultServeMux)
+
+	// Application endpoints
 	r.Post("/api/shorten", mw.BuildMwChain(apiCreate.CreateID(service, opts), mwAPIShortenChain...))
 	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIBodyChain...))
 	r.Get("/api/user/urls", mw.BuildMwChain(apiGet.GetURLByUser(service, opts), mwChain...))
@@ -126,6 +135,20 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
+
+			// Create profiles directory
+			if err := os.MkdirAll("profiles", 0755); err != nil {
+				log.Printf("Warning: Failed to create profiles directory: %v", err)
+			} else {
+				if err := captureMemoryProfile("profiles/result.pprof"); err != nil {
+					log.Printf("Warning: Failed to save memory profile: %v", err)
+				} else {
+					log.Println("Memory profile saved to profiles/base.pprof")
+				}
+			}
+
+			log.Println("pprof endpoints available at /debug/pprof/")
+
 			go func() {
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					log.Fatalf("HTTP server failed: %v", err)
@@ -141,4 +164,22 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 			return server.Shutdown(ctx)
 		},
 	})
+}
+
+// capture a memory profile and saves it to the specified file
+func captureMemoryProfile(filename string) error {
+	runtime.GC()
+
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Write profile
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		return err
+	}
+
+	return nil
 }

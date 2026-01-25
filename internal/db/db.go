@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
@@ -19,6 +20,17 @@ func NewDB(opts shortener.Opts) (DBIntrnl, error) {
 		conn, err := sql.Open("pgx", opts.DatabaseDSN)
 		if err != nil {
 			return DBIntrnl{DB: conn}, err
+		}
+
+		// Configure connection
+		conn.SetMaxOpenConns(25)
+		conn.SetMaxIdleConns(10)
+		conn.SetConnMaxLifetime(5 * time.Minute)
+		conn.SetConnMaxIdleTime(2 * time.Minute)
+
+		// Verify connection
+		if err := conn.Ping(); err != nil {
+			return DBIntrnl{DB: conn}, fmt.Errorf("failed to ping database: %w", err)
 		}
 
 		// DB migration
