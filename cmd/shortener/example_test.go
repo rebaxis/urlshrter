@@ -289,7 +289,10 @@ func ExampleNewRouter_jwtCookie() {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	cookies := w.Result().Cookies()
+	result := w.Result()
+	defer result.Body.Close()
+
+	cookies := result.Cookies()
 	hasJWT := false
 	for _, c := range cookies {
 		if c.Name == "jwt_cookie" {
