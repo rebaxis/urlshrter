@@ -5,8 +5,9 @@ import (
 	"net/url"
 
 	"github.com/caarlos0/env/v6"
-	"github.com/rebaxis/urlshrter/internal/lib"
 	flag "github.com/spf13/pflag"
+
+	"github.com/rebaxis/urlshrter/internal/lib"
 )
 
 type Opts struct {

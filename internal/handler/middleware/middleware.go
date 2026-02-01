@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+
 	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
 	"github.com/rebaxis/urlshrter/internal/lib"

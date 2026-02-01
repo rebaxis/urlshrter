@@ -3,8 +3,9 @@ package lib_test
 import (
 	"testing"
 
-	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/rebaxis/urlshrter/internal/lib"
 )
 
 func TestGenerateRandomAlphabetString(t *testing.T) {

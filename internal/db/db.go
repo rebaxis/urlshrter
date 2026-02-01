@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 )
 

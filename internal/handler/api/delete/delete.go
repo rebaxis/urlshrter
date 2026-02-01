@@ -9,6 +9,7 @@ import (
 	"time"
 
 	validator "github.com/asaskevich/govalidator"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/service"

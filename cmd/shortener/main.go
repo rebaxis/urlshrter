@@ -10,6 +10,8 @@ import (
 	"runtime/pprof"
 
 	chi "github.com/go-chi/chi/v5"
+	"go.uber.org/fx"
+
 	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
@@ -21,7 +23,6 @@ import (
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
-	"go.uber.org/fx"
 )
 
 func main() {

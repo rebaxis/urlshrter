@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/model"
