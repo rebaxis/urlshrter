@@ -1,3 +1,5 @@
+// Package repository предоставляет слой доступа к данным для URL.
+// Реализует паттерн Repository для абстракции хранилища (файл, БД, кэш).
 package repository
 
 import (
@@ -15,13 +17,19 @@ import (
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
+// URLRepository предоставляет доступ к хранилищу URL.
+// Поддерживает работу с файлом, базой данных и in-memory кэшем.
+// Использует двухуровневое кэширование: direct (short->URLEnt) и reverse (original->URLEnt).
 type URLRepository struct {
-	Storage     model.URLStorage
-	StorageFile string
-	StorageDB   *sql.DB
-	UseDB       bool
+	Storage     model.URLStorage // In-memory хранилище с кэшами
+	StorageFile string           // Путь к файлу для персистентности
+	StorageDB   *sql.DB          // Подключение к PostgreSQL
+	UseDB       bool             // Флаг использования БД вместо файла
 }
 
+// NewURLRepository создает новый репозиторий URL.
+// Загружает данные из файла, инициализирует кэши и настраивает подключение к БД.
+// Кэши создаются без автоматического истечения (-1) с очисткой каждую минуту.
 func NewURLRepository(opts shortener.Opts, dbIntrnl dbIntrnl.DBIntrnl) URLRepository {
 	urls := make([]model.URLEnt, 0)
 	data, err := os.ReadFile(opts.StorageFile)
@@ -55,7 +63,10 @@ func NewURLRepository(opts shortener.Opts, dbIntrnl dbIntrnl.DBIntrnl) URLReposi
 	}
 }
 
-// //// Переделать только на SaveBatch
+// Save сохраняет один URL в хранилище (БД и/или файл) и обновляет кэши.
+// Добавляет запись в слайс, обновляет direct и reverse кэши.
+// Если UseDB=true, записывает в PostgreSQL. Всегда обновляет JSON файл.
+// TODO: Переделать на использование только SaveBatch для консистентности.
 func (r *URLRepository) Save(urlEnt model.URLEnt) error {
 	r.Storage.URLS = append(r.Storage.URLS, urlEnt)
 	r.Storage.Cache.Set(urlEnt.ShortURL, urlEnt, cache.DefaultExpiration)
@@ -89,6 +100,9 @@ func (r *URLRepository) Save(urlEnt model.URLEnt) error {
 	return nil
 }
 
+// SaveBatch сохраняет пакет URL в хранилище атомарно.
+// Обновляет кэши для каждого URL. Если UseDB=true, использует транзакцию БД.
+// При ошибке БД выполняет rollback. Всегда обновляет JSON файл после успешной записи в БД.
 func (r *URLRepository) SaveBatch(batch model.URLBatch) error {
 	r.Storage.URLS = append(r.Storage.URLS, batch.URLS...)
 
@@ -137,6 +151,9 @@ func (r *URLRepository) SaveBatch(batch model.URLBatch) error {
 	return nil
 }
 
+// Get получает URL по короткому идентификатору.
+// Сначала проверяет in-memory кэш для быстрого доступа.
+// Если не найдено в кэше и UseDB=true, запрашивает из PostgreSQL с таймаутом 1 секунда.
 func (r *URLRepository) Get(id string) (model.URLEnt, error) {
 	if ent, exists := r.Storage.Cache.Get(id); exists {
 		return ent.(model.URLEnt), nil
@@ -160,6 +177,9 @@ func (r *URLRepository) Get(id string) (model.URLEnt, error) {
 	return model.URLEnt{}, nil
 }
 
+// GetByURL находит URL по оригинальному адресу используя reverse кэш.
+// Сначала проверяет reverse кэш (original_url -> URLEnt).
+// Если не найдено и UseDB=true, выполняет SQL запрос с таймаутом 1 секунда.
 func (r *URLRepository) GetByURL(url string) (model.URLEnt, error) {
 	if ent, exists := r.Storage.ReverseCache.Get(url); exists {
 		return ent.(model.URLEnt), nil
@@ -183,6 +203,9 @@ func (r *URLRepository) GetByURL(url string) (model.URLEnt, error) {
 	return model.URLEnt{}, nil
 }
 
+// GetEntByURL получает полную запись URL по оригинальному адресу.
+// Аналогично GetByURL, использует reverse кэш и БД.
+// Используется в бизнес-логике для проверки существования URL перед созданием.
 func (r *URLRepository) GetEntByURL(url string) (model.URLEnt, error) {
 	if ent, exists := r.Storage.ReverseCache.Get(url); exists {
 		return ent.(model.URLEnt), nil
@@ -205,6 +228,9 @@ func (r *URLRepository) GetEntByURL(url string) (model.URLEnt, error) {
 	return model.URLEnt{}, nil
 }
 
+// GetEntByUser получает все URL созданные конкретным пользователем.
+// Работает только с БД (UseDB=true), не использует кэш.
+// Выполняет SQL запрос с таймаутом 3 секунды и возвращает все найденные записи.
 func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	urls := model.URLBatch{}
 
@@ -232,6 +258,10 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	return urls, nil
 }
 
+// DeleteURLByUser выполняет soft delete URL пользователя из канала.
+// Читает записи из канала, обновляет флаг IsDeleted в кэшах.
+// Если UseDB=true, выполняет batch UPDATE в транзакции используя unnest для массовой операции.
+// Метод блокирующий - ждет закрытия канала перед выполнением БД операций.
 func (r *URLRepository) DeleteURLByUser(ctx context.Context, out chan model.DeleteURLRecord) error {
 	var userIDs []string
 	var urls []string

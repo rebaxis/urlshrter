@@ -1,3 +1,5 @@
+// Package lib содержит вспомогательные утилиты общего назначения.
+// Предоставляет функции для генерации случайных строк и другие полезные инструменты.
 package lib
 
 import (
@@ -9,6 +11,8 @@ const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var alphabetLen = big.NewInt(int64(len(alphabet)))
 
+// GenerateRandomAlphabetString генерирует случайную строку заданной длины.
+// полученная строка содержит только символы латинского алфавита.
 func GenerateRandomAlphabetString(length int) string {
 	b := make([]byte, length)
 	for i := range b {

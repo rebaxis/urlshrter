@@ -1,3 +1,5 @@
+// Package db управляет подключением к базе данных и миграциями.
+// Предоставляет обертку над sql.DB с дополнительной логикой инициализации.
 package db
 
 import (
@@ -10,11 +12,16 @@ import (
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 )
 
+// DBIntrnl представляет внутреннюю обертку над подключением к базе данных.
+// Содержит указатель на sql.DB и флаг использования БД.
 type DBIntrnl struct {
-	DB    *sql.DB
-	UseDB bool
+	DB    *sql.DB // Подключение к PostgreSQL
+	UseDB bool    // Флаг, указывающий используется ли БД (false если работа только с файлом)
 }
 
+// NewDB создает новое подключение к базе данных на основе конфигурации.
+// Выполняет настройку пула соединений, проверку подключения и применение миграций.
+// Возвращает DBIntrnl с флагом UseDB=true если DSN указан, иначе UseDB=false.
 func NewDB(opts shortener.Opts) (DBIntrnl, error) {
 	var db DBIntrnl
 	if opts.DatabaseDSN != "" {
@@ -53,6 +60,8 @@ func NewDB(opts shortener.Opts) (DBIntrnl, error) {
 	return db, nil
 }
 
+// CloseDB закрывает подключение к базе данных если оно было установлено.
+// Вызывается при graceful shutdown приложения.
 func (d DBIntrnl) CloseDB() error {
 	if d.UseDB {
 		if err := d.DB.Close(); err != nil {

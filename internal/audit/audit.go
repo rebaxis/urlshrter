@@ -1,3 +1,5 @@
+// Package audit реализует систему аудита для логирования событий с использованием паттерна Observer.
+// Поддерживает запись событий в файл и отправку по HTTP.
 package audit
 
 import (
@@ -11,28 +13,36 @@ import (
 	"github.com/rebaxis/urlshrter/internal/config/logger"
 )
 
+// Event представляет событие аудита, которое необходимо залогировать.
+// Содержит информацию о времени события, действии, пользователе и URL.
 type Event struct {
-	Timestamp int64  `json:"ts"`
-	Action    string `json:"action"`
-	UserID    string `json:"user_id"`
-	URL       string `json:"url"`
+	Timestamp int64  `json:"ts"`      // Unix timestamp события
+	Action    string `json:"action"`  // Действие: shorten (создание) или follow (переход по ссылке)
+	UserID    string `json:"user_id"` // Идентификатор пользователя, если есть
+	URL       string `json:"url"`     // Оригинальный (не сокращенный) URL
 }
 
+// Observer определяет интерфейс наблюдателя для получения уведомлений о событиях аудита.
 type Observer interface {
 	Notify(event Event)
 }
 
+// FileObserver реализует Observer для записи событий аудита в файл.
+// Использует mutex для безопасной записи из нескольких горутин.
 type FileObserver struct {
 	filePath string
 	mu       sync.Mutex
 }
 
+// NewFileObserver создает новый файловый наблюдатель для указанного пути к файлу.
 func NewFileObserver(filePath string) *FileObserver {
 	return &FileObserver{
 		filePath: filePath,
 	}
 }
 
+// Notify записывает событие аудита в файл в формате JSON (одна строка на событие).
+// Метод потокобезопасен благодаря использованию mutex.
 func (f *FileObserver) Notify(event Event) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -58,11 +68,15 @@ func (f *FileObserver) Notify(event Event) {
 	}
 }
 
+// HTTPObserver реализует Observer для отправки событий аудита по HTTP POST запросу.
+// Использует HTTP клиент с таймаутом 5 секунд.
 type HTTPObserver struct {
 	url    string
 	client *http.Client
 }
 
+// NewHTTPObserver создает новый HTTP наблюдатель для указанного URL.
+// Настраивает HTTP клиент с таймаутом 5 секунд для предотвращения зависаний.
 func NewHTTPObserver(url string) *HTTPObserver {
 	return &HTTPObserver{
 		url: url,
@@ -72,6 +86,9 @@ func NewHTTPObserver(url string) *HTTPObserver {
 	}
 }
 
+// Notify отправляет событие аудита на указанный URL в формате JSON через POST запрос.
+// Устанавливает заголовок Content-Type: application/json.
+// Логирует ошибки при неудачной отправке или non-2xx статус коде.
 func (h *HTTPObserver) Notify(event Event) {
 	eventJSON, err := json.Marshal(event)
 	if err != nil {
@@ -103,23 +120,32 @@ func (h *HTTPObserver) Notify(event Event) {
 	}
 }
 
+// Subject представляет субъект в паттерне Observer.
+// Управляет списком наблюдателей и уведомляет их о событиях аудита.
+// Использует RWMutex для потокобезопасного доступа к списку наблюдателей.
 type Subject struct {
 	observers []Observer
 	mu        sync.RWMutex
 }
 
+// NewSubject создает новый субъект с пустым списком наблюдателей.
 func NewSubject() *Subject {
 	return &Subject{
 		observers: make([]Observer, 0),
 	}
 }
 
+// Attach добавляет нового наблюдателя к субъекту.
+// Метод потокобезопасен и может быть вызван из нескольких горутин.
 func (s *Subject) Attach(observer Observer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.observers = append(s.observers, observer)
 }
 
+// Notify уведомляет всех зарегистрированных наблюдателей о событии аудита.
+// Каждый наблюдатель уведомляется в отдельной горутине для неблокирующей обработки.
+// Метод потокобезопасен благодаря использованию RWMutex.
 func (s *Subject) Notify(event Event) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

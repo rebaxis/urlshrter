@@ -1,3 +1,4 @@
+// Package get предоставляет HTTP обработчики для получения URL.
 package get
 
 import (
@@ -11,6 +12,16 @@ import (
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+// GetURLByUser возвращает HTTP обработчик для получения всех URL пользователя.
+// Возвращает JSON массив с оригинальными и короткими URL.
+//
+// Требования:
+//   - X-User-ID заголовок устанавливается middleware
+//
+// Статус коды:
+//   - 200 OK - список URL возвращен
+//   - 204 No Content - у пользователя нет URL
+//   - 500 Internal Server Error - ошибка сервера
 func GetURLByUser(service service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusNoContent

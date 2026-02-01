@@ -1,3 +1,4 @@
+// Package create предоставляет HTTP обработчики для создания коротких URL через plain text.
 package create
 
 import (
@@ -12,6 +13,19 @@ import (
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+// CreateID возвращает HTTP обработчик для создания короткого URL из plain text запроса.
+// Принимает URL в теле запроса как plain text и возвращает короткий URL.
+//
+// Требования:
+//   - Content-Type должен быть text/plain
+//   - Тело запроса должно содержать валидный URL
+//   - X-User-ID заголовок устанавливается middleware
+//
+// Статус коды:
+//   - 201 Created - URL создан успешно
+//   - 409 Conflict - URL уже существует
+//   - 400 Bad Request - невалидный запрос
+//   - 500 Internal Server Error - ошибка сервера
 func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверяем что Content-Type содержит text/plain

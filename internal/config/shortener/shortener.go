@@ -1,3 +1,5 @@
+// Package shortener содержит конфигурацию приложения для сервиса сокращения URL.
+// Управляет чтением настроек из переменных окружения и флагов командной строки.
 package shortener
 
 import (
@@ -10,16 +12,22 @@ import (
 	"github.com/rebaxis/urlshrter/internal/lib"
 )
 
+// Opts содержит все параметры конфигурации приложения.
+// Настройки могут быть заданы через переменные окружения или флаги командной строки.
+// Приоритет: флаги командной строки > переменные окружения > значения по умолчанию.
 type Opts struct {
-	Address       string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
-	StorageFile   string `env:"FILE_STORAGE_PATH"`
-	DatabaseDSN   string `env:"DATABASE_DSN"`
-	EncryptionKey string `env:"ENCRYPTION_KEY"`
-	AuditFile     string `env:"AUDIT_FILE"`
-	AuditURL      string `env:"AUDIT_URL"`
+	Address       string `env:"SERVER_ADDRESS"`    // Адрес HTTP сервера (host:port)
+	BaseURL       string `env:"BASE_URL"`          // Базовый URL для формирования коротких ссылок
+	StorageFile   string `env:"FILE_STORAGE_PATH"` // Путь к файлу для хранения URL (если не используется БД)
+	DatabaseDSN   string `env:"DATABASE_DSN"`      // Data Source Name для PostgreSQL
+	EncryptionKey string `env:"ENCRYPTION_KEY"`    // Секретный ключ для подписи JWT токенов
+	AuditFile     string `env:"AUDIT_FILE"`        // Путь к файлу логов аудита
+	AuditURL      string `env:"AUDIT_URL"`         // URL для отправки событий аудита по HTTP
 }
 
+// GetOpts читает и возвращает конфигурацию приложения.
+// Объединяет значения по умолчанию, переменные окружения и флаги командной строки.
+// Валидирует BaseURL и завершает работу с ошибкой если он некорректен.
 func GetOpts() Opts {
 	var opts = Opts{
 		Address:       "127.0.0.1:8080",

@@ -1,3 +1,5 @@
+// Package main содержит точку входа в приложение сервиса сокращения URL.
+// Приложение использует fx для dependency injection и chi для маршрутизации HTTP запросов.
 package main
 
 import (
@@ -25,10 +27,13 @@ import (
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+// main запускает приложение с использованием fx dependency injection контейнера.
 func main() {
 	fx.New(CreateApp()).Run()
 }
 
+// CreateApp создает и конфигурирует fx приложение со всеми необходимыми зависимостями.
+// Регистрирует провайдеры для всех сервисов и запускает HTTP сервер.
 func CreateApp() fx.Option {
 	return fx.Options(
 		fx.Provide(
@@ -46,10 +51,13 @@ func CreateApp() fx.Option {
 	)
 }
 
+// NewOpts создает и возвращает конфигурацию приложения из флагов и переменных окружения.
 func NewOpts() shortener.Opts {
 	return shortener.GetOpts()
 }
 
+// NewDB инициализирует подключение к базе данных на основе настроек конфигурации.
+// В случае ошибки инициализации приложение завершается с fatal ошибкой.
 func NewDB(opts shortener.Opts) dbIntrnl.DBIntrnl {
 	dbIntrnl, err := dbIntrnl.NewDB(opts)
 	if err != nil {
@@ -58,22 +66,30 @@ func NewDB(opts shortener.Opts) dbIntrnl.DBIntrnl {
 	return dbIntrnl
 }
 
+// NewRepo создает новый репозиторий для работы с URL на основе конфигурации и подключения к БД.
 func NewRepo(opts shortener.Opts, db dbIntrnl.DBIntrnl) repository.URLRepository {
 	return repository.NewURLRepository(opts, db)
 }
 
+// NewURLService создает сервис для работы с операциями над URL (создание, получение, удаление).
 func NewURLService(repo repository.URLRepository) service.URLService {
 	return service.NewURLService(&repo)
 }
 
+// NewDBService создает сервис для работы с операциями базы данных (ping, health check).
 func NewDBService(repo repository.URLRepository) service.DBService {
 	return service.NewDBService(&repo)
 }
 
+// NewJWTCookieService создает сервис для работы с JWT токенами в cookies.
+// Использует секретный ключ из конфигурации для подписи и проверки токенов.
 func NewJWTCookieService(opts shortener.Opts) service.JWTCookieService {
 	return *service.NewJWTCookieService(service.JWTCookieConfig{CookieName: "jwt_cookie", SecretKey: opts.EncryptionKey})
 }
 
+// NewAuditSubject создает субъект для аудита с подключенными наблюдателями.
+// Подключает файловый коннектор, если указан путь к файлу аудита.
+// Подключает HTTP коннектор, если указан URL для отправки событий аудита.
 func NewAuditSubject(opts shortener.Opts) *audit.Subject {
 	subject := audit.NewSubject()
 
@@ -96,6 +112,26 @@ func NewAuditSubject(opts shortener.Opts) *audit.Subject {
 	return subject
 }
 
+// NewRouter создает и настраивает HTTP маршрутизатор chi с middlewares и обработчиками.
+// Регистрирует эндпоинты для создания, получения и удаления сокращенных URL.
+// Подключает pprof эндпоинты для профилирования на /debug/pprof/.
+//
+// Эндпоинты:
+//   - POST /api/shorten - создание короткого URL (JSON)
+//   - POST /api/shorten/batch - пакетное создание URL (JSON)
+//   - GET /api/user/urls - получение всех URL пользователя
+//   - DELETE /api/user/urls - удаление URL пользователя
+//   - POST / - создание короткого URL (plain text)
+//   - GET /{id} - редирект на оригинальный URL
+//   - GET /ping - health check базы данных
+//   - /debug/pprof/* - профилирование (CPU, memory, goroutines)
+//
+// Middlewares применяются в следующем порядке:
+//   - AuthorizationMw - создание/проверка JWT токена
+//   - CompressMw - gzip компрессия запросов/ответов
+//   - LoggingMw - логирование всех запросов
+//   - ValidatingBodyMw - валидация тела запроса (для некоторых эндпоинтов)
+//   - AuditMw - аудит событий (для создания и использования URL)
 func NewRouter(service service.URLService, dbService service.DBService, jwtCookieService service.JWTCookieService, auditSubject *audit.Subject, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
 		mw.AuthorizationMw(&jwtCookieService),
@@ -125,6 +161,7 @@ func NewRouter(service service.URLService, dbService service.DBService, jwtCooki
 	return r
 }
 
+// NewServer создает HTTP сервер с настроенным маршрутизатором и адресом из конфигурации.
 func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	return &http.Server{
 		Addr:    opts.Address,
@@ -132,6 +169,9 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	}
 }
 
+// StartServer регистрирует хуки жизненного цикла fx для запуска и остановки HTTP сервера.
+// При старте создает директорию profiles и сохраняет начальный профиль памяти.
+// При остановке закрывает соединение с БД и gracefully останавливает HTTP сервер.
 func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -167,7 +207,8 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 	})
 }
 
-// capture a memory profile and saves it to the specified file
+// captureMemoryProfile захватывает профиль памяти и сохраняет его в указанный файл.
+// Перед захватом выполняется принудительная сборка мусора для более точных результатов.
 func captureMemoryProfile(filename string) error {
 	runtime.GC()
 

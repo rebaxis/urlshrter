@@ -1,3 +1,4 @@
+// Package get предоставляет HTTP обработчики для получения и редиректа URL.
 package get
 
 import (
@@ -7,6 +8,14 @@ import (
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+// GetURLByID возвращает HTTP обработчик для редиректа по короткому URL.
+// Получает оригинальный URL по короткому ID и перенаправляет на него.
+//
+// Статус коды:
+//   - 307 Temporary Redirect - успешный редирект
+//   - 400 Bad Request - URL не найден
+//   - 410 Gone - URL был удален
+//   - 500 Internal Server Error - ошибка сервера
 func GetURLByID(service service.URLService) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		idString := req.PathValue("id")
@@ -30,6 +39,12 @@ func GetURLByID(service service.URLService) http.HandlerFunc {
 	}
 }
 
+// PingDB возвращает HTTP обработчик для проверки доступности базы данных.
+// Используется для health check мониторинга.
+//
+// Статус коды:
+//   - 200 OK - БД доступна
+//   - 500 Internal Server Error - БД недоступна или не используется
 func PingDB(service service.DBService) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if err := service.Ping(); err != nil {
