@@ -107,10 +107,13 @@ func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.Cr
 		sErr = s.ErrExistID()
 	} else {
 		// Добавляем URL в хранилище
-		shortSt := lib.GenerateRandomAlphabetString(8)
+		shortSt, err := lib.GenerateRandomAlphabetString(8)
+		if err != nil {
+			return &data, err
+		}
 		urlEnt.ShortURL = shortSt
 		urlEnt.UUID = uuid.New().String()
-		err := s.repo.Save(urlEnt)
+		err = s.repo.Save(urlEnt)
 		if err != nil {
 			return &data, err
 		}
@@ -155,7 +158,10 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 			data.URLS = append(data.URLS, res)
 			continue
 		}
-		shortSt := lib.GenerateRandomAlphabetString(8)
+		shortSt, err := lib.GenerateRandomAlphabetString(8)
+		if err != nil {
+			return model.URLBatch{}, err
+		}
 		uuid := uuid.New().String()
 		prepData.URLS = append(prepData.URLS, model.URLEnt{
 			OriginalURL: v.OriginalURL,

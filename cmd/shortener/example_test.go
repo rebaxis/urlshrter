@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,9 +21,18 @@ import (
 
 // Example демонстрирует базовое использование URL shortener через HTTP API.
 func Example() {
-	tmpFile, _ := os.CreateTemp("", "urls_*.json")
-	tmpFile.WriteString("[]")
-	tmpFile.Close()
+	tmpFile, err := os.CreateTemp("", "urls_*.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString("[]"); err != nil {
+		log.Fatal(err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		log.Fatal(err)
+	}
 
 	opts := shortener.Opts{
 		Address:       "localhost:8080",
@@ -31,7 +41,10 @@ func Example() {
 		EncryptionKey: "test-secret-key",
 	}
 
-	dbIntrnl, _ := db.NewDB(opts)
+	dbIntrnl, err := db.NewDB(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
 	repo := repository.NewURLRepository(opts, dbIntrnl)
 	urlService := service.NewURLService(&repo)
 	dbService := service.NewDBService(&repo)
@@ -64,9 +77,17 @@ func Example() {
 
 // setupRouter создает роутер для тестирования
 func setupRouter() *http.ServeMux {
-	tmpFile, _ := os.CreateTemp("", "urls_*.json")
-	tmpFile.WriteString("[]")
-	tmpFile.Close()
+	tmpFile, err := os.CreateTemp("", "urls_*.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err := tmpFile.WriteString("[]"); err != nil {
+		log.Fatal(err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		log.Fatal(err)
+	}
 
 	opts := shortener.Opts{
 		Address:       "localhost:8080",
@@ -75,7 +96,10 @@ func setupRouter() *http.ServeMux {
 		EncryptionKey: "test-secret-key",
 	}
 
-	dbIntrnl, _ := db.NewDB(opts)
+	dbIntrnl, err := db.NewDB(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
 	repo := repository.NewURLRepository(opts, dbIntrnl)
 	urlService := service.NewURLService(&repo)
 	dbService := service.NewDBService(&repo)
@@ -145,7 +169,10 @@ func ExampleNewRouter_batch() {
 		{CorrelationID: "id1", OriginalURL: "https://example.com/url1"},
 		{CorrelationID: "id2", OriginalURL: "https://example.com/url2"},
 	}
-	reqBody, _ := json.Marshal(batch)
+	reqBody, err := json.Marshal(batch)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -154,7 +181,9 @@ func ExampleNewRouter_batch() {
 	router.ServeHTTP(w, req)
 
 	var result []model.BatchEntResp
-	json.NewDecoder(w.Body).Decode(&result)
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Println("Status:", w.Code)
 	fmt.Println("Created URLs:", len(result))
@@ -183,7 +212,10 @@ func ExampleNewRouter_deleteUrls() {
 	router := setupRouter()
 
 	urls := []string{"abc123", "def456"}
-	reqBody, _ := json.Marshal(urls)
+	reqBody, err := json.Marshal(urls)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/user/urls", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
@@ -207,7 +239,10 @@ func ExampleNewRouter_plainText() {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	body, _ := io.ReadAll(w.Body)
+	body, err := io.ReadAll(w.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Println("Status:", w.Code)
 	fmt.Println("Content-Type:", w.Header().Get("Content-Type"))
@@ -230,7 +265,9 @@ func ExampleNewRouter_redirect() {
 	router.ServeHTTP(createW, createReq)
 
 	var createResult model.CreateIDResp
-	json.NewDecoder(createW.Body).Decode(&createResult)
+	if err := json.NewDecoder(createW.Body).Decode(&createResult); err != nil {
+		log.Fatal(err)
+	}
 	shortID := createResult.Result[len("http://localhost:8080/"):]
 
 	// Получаем редирект

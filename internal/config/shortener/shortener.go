@@ -29,12 +29,17 @@ type Opts struct {
 // Объединяет значения по умолчанию, переменные окружения и флаги командной строки.
 // Валидирует BaseURL и завершает работу с ошибкой если он некорректен.
 func GetOpts() Opts {
+	encryptionKey, err := lib.GenerateRandomAlphabetString(50)
+	if err != nil {
+		log.Fatal("Failed to generate encryption key: ", err)
+	}
+
 	var opts = Opts{
 		Address:       "127.0.0.1:8080",
 		BaseURL:       "http://localhost:8080",
 		StorageFile:   `C:\Users\Public\Documents\urlshrter.json`,
 		DatabaseDSN:   "",
-		EncryptionKey: lib.GenerateRandomAlphabetString(50),
+		EncryptionKey: encryptionKey,
 		AuditFile:     "",
 		AuditURL:      "",
 	}
@@ -42,7 +47,7 @@ func GetOpts() Opts {
 	var envs Opts
 	var flags Opts
 
-	err := env.Parse(&envs)
+	err = env.Parse(&envs)
 	if err != nil {
 		log.Fatal(err)
 	}
