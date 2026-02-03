@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+
+	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/logger"
 	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/service"
@@ -32,6 +35,11 @@ type (
 		http.ResponseWriter
 		Writer io.Writer
 	}
+
+	auditResponseWriter struct {
+		http.ResponseWriter
+		status int
+	}
 )
 
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
@@ -47,6 +55,18 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 
 func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
+}
+
+func (w *auditResponseWriter) WriteHeader(statusCode int) {
+	w.status = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *auditResponseWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 var LoggingMw = func(h http.HandlerFunc) http.HandlerFunc {
@@ -160,7 +180,11 @@ func AuthorizationMw(jwtCookieService JWTCookieManager) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := jwtCookieService.GetClaimsFromRequest(r)
 			if err == http.ErrNoCookie || err == service.ErrInvalidToken || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-				userID := lib.GenerateRandomAlphabetString(6)
+				userID, err := lib.GenerateRandomAlphabetString(6)
+				if err != nil {
+					http.Error(w, "Failed to generate user ID: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
 				err = jwtCookieService.SetJWTCookie(&w, userID)
 				if err != nil {
 					http.Error(w, "Some problem: "+err.Error(), http.StatusBadRequest)
@@ -183,6 +207,66 @@ func AuthorizationMw(jwtCookieService JWTCookieManager) Middleware {
 			}
 
 			h.ServeHTTP(w, r)
+		})
+	}
+}
+
+// MW для Аудита
+func AuditMw(action string, subject *audit.Subject) Middleware {
+	return func(h http.HandlerFunc) http.HandlerFunc {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var originalURL string
+			if action == "shorten" {
+
+				bodyBytes, err := io.ReadAll(r.Body)
+				if err == nil && len(bodyBytes) > 0 {
+					r.Body.Close()
+					r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+					var jsonBody map[string]interface{}
+					if err := json.Unmarshal(bodyBytes, &jsonBody); err == nil {
+						if url, ok := jsonBody["url"].(string); ok {
+							originalURL = url
+						}
+					} else {
+						originalURL = strings.TrimSpace(string(bodyBytes))
+					}
+				}
+			}
+
+			auditWriter := &auditResponseWriter{
+				ResponseWriter: w,
+				status:         0,
+			}
+
+			h.ServeHTTP(auditWriter, r)
+
+			shouldAudit := false
+			if action == "follow" {
+				shouldAudit = auditWriter.status >= 200 && auditWriter.status < 400
+			} else {
+				shouldAudit = auditWriter.status >= 200 && auditWriter.status < 300
+			}
+
+			if shouldAudit {
+				var url string
+				if action == "follow" {
+					url = auditWriter.Header().Get("Location")
+				} else {
+					url = originalURL
+				}
+
+				if url != "" {
+					event := audit.Event{
+						Timestamp: time.Now().Unix(),
+						Action:    action,
+						UserID:    r.Header.Get("X-User-ID"),
+						URL:       url,
+					}
+
+					subject.Notify(event)
+				}
+			}
 		})
 	}
 }

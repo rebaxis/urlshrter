@@ -1,3 +1,4 @@
+// Package create предоставляет HTTP обработчики для создания коротких URL.
 package create
 
 import (
@@ -8,11 +9,25 @@ import (
 	"strings"
 
 	validator "github.com/asaskevich/govalidator"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+// CreateID возвращает HTTP обработчик для создания короткого URL.
+// Принимает JSON запрос с полем "url" и возвращает короткий URL.
+//
+// Требования:
+//   - Content-Type должен быть application/json
+//   - URL должен быть валидным
+//   - X-User-ID заголовок устанавливается middleware
+//
+// Статус коды:
+//   - 201 Created - URL создан успешно
+//   - 409 Conflict - URL уже существует
+//   - 400 Bad Request - невалидный запрос
+//   - 500 Internal Server Error - ошибка сервера
 func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем что Content-Type содержит application/json
@@ -66,6 +81,19 @@ func CreateID(service service.URLService, opts shortener.Opts) http.HandlerFunc 
 	}
 }
 
+// CreateIDBatch возвращает HTTP обработчик для пакетного создания коротких URL.
+// Принимает JSON массив с объектами, содержащими correlation_id и original_url.
+// Возвращает массив с correlation_id и созданными short_url.
+//
+// Требования:
+//   - Content-Type должен быть application/json
+//   - Каждый URL должен быть валидным
+//   - correlation_id используется для связи запроса с ответом
+//
+// Статус коды:
+//   - 201 Created - все URL созданы успешно
+//   - 400 Bad Request - невалидный запрос
+//   - 500 Internal Server Error - ошибка сервера
 func CreateIDBatch(service service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем что Content-Type содержит application/json

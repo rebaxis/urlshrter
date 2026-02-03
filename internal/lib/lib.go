@@ -1,17 +1,27 @@
+// Package lib содержит вспомогательные утилиты общего назначения.
+// Предоставляет функции для генерации случайных строк и другие полезные инструменты.
 package lib
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func GenerateRandomAlphabetString(length int) string {
-	seededRand := rand.New(rand.NewSource(time.Now().UnixNano() + rand.Int63()))
+var alphabetLen = big.NewInt(int64(len(alphabet)))
+
+// GenerateRandomAlphabetString генерирует случайную строку заданной длины.
+// Полученная строка содержит только символы латинского алфавита.
+// Возвращает ошибку, если не удалось сгенерировать случайное число.
+func GenerateRandomAlphabetString(length int) (string, error) {
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = alphabet[seededRand.Intn(len(alphabet))]
+		num, err := rand.Int(rand.Reader, alphabetLen)
+		if err != nil {
+			return "", err
+		}
+		b[i] = alphabet[num.Int64()]
 	}
-	return string(b)
+	return string(b), nil
 }

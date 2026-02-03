@@ -1,3 +1,5 @@
+// Package service содержит бизнес-логику сервиса сокращения URL.
+// Предоставляет сервисы для работы с URL, базой данных и аутентификацией.
 package service
 
 import (
@@ -5,39 +7,49 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/model"
 )
 
+// URLSave определяет интерфейс для сохранения одного URL.
 type URLSave interface {
 	Save(model.URLEnt) error
 }
 
+// URLSaveBatch определяет интерфейс для пакетного сохранения URL.
 type URLSaveBatch interface {
 	SaveBatch(model.URLBatch) error
 }
 
+// URLGet определяет интерфейс для получения URL по короткому идентификатору.
 type URLGet interface {
 	Get(id string) (model.URLEnt, error)
 }
 
+// URLGetByURL определяет интерфейс для поиска URL по оригинальному адресу.
 type URLGetByURL interface {
 	GetByURL(url string) (model.URLEnt, error)
 }
 
+// URLGetEntByURL определяет интерфейс для получения полной записи URL по оригинальному адресу.
 type URLGetEntByURL interface {
 	GetEntByURL(url string) (model.URLEnt, error)
 }
 
+// GetterEntByUser определяет интерфейс для получения всех URL конкретного пользователя.
 type GetterEntByUser interface {
 	GetEntByUser(userID string) (model.URLBatch, error)
 }
 
+// DeleterURLByUser определяет интерфейс для асинхронного удаления URL пользователя.
 type DeleterURLByUser interface {
 	DeleteURLByUser(ctx context.Context, ch chan model.DeleteURLRecord) error
 }
 
+// URLReaderWriter объединяет все интерфейсы для работы с URL репозиторием.
+// Используется для dependency injection в URLService.
 type URLReaderWriter interface {
 	URLSave
 	URLGet
@@ -48,10 +60,13 @@ type URLReaderWriter interface {
 	DeleterURLByUser
 }
 
+// URLService предоставляет бизнес-логику для работы с сокращенными URL.
+// Обрабатывает создание, получение и удаление URL через репозиторий.
 type URLService struct {
 	repo URLReaderWriter
 }
 
+// NewURLService создает новый экземпляр URLService с указанным репозиторием.
 func NewURLService(repo URLReaderWriter) URLService {
 	return URLService{
 		repo: repo,
@@ -59,18 +74,25 @@ func NewURLService(repo URLReaderWriter) URLService {
 }
 
 var (
-	ErrExistID   = errors.New("this URL already has short name")
+	// ErrExistID возвращается когда URL уже имеет короткую ссылку в системе.
+	ErrExistID = errors.New("this URL already has short name")
+	// ErrDeletedID возвращается при попытке доступа к удаленному URL.
 	ErrDeletedID = errors.New("this URL was deleted")
 )
 
+// ErrExistID возвращает ошибку для случая существующего URL.
 func (s URLService) ErrExistID() error {
 	return ErrExistID
 }
 
+// ErrDeletedID возвращает ошибку для случая удаленного URL.
 func (s URLService) ErrDeletedID() error {
 	return ErrDeletedID
 }
 
+// SaveURL сохраняет новый URL или возвращает существующий.
+// Проверяет наличие URL в системе, создает короткую ссылку если её нет.
+// Возвращает ErrExistID если URL уже был сокращен ранее.
 func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.CreateIDResp, error) {
 	data := model.CreateIDResp{}
 	var sErr error
@@ -85,10 +107,13 @@ func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.Cr
 		sErr = s.ErrExistID()
 	} else {
 		// Добавляем URL в хранилище
-		shortSt := lib.GenerateRandomAlphabetString(8)
+		shortSt, err := lib.GenerateRandomAlphabetString(8)
+		if err != nil {
+			return &data, err
+		}
 		urlEnt.ShortURL = shortSt
 		urlEnt.UUID = uuid.New().String()
-		err := s.repo.Save(urlEnt)
+		err = s.repo.Save(urlEnt)
 		if err != nil {
 			return &data, err
 		}
@@ -101,6 +126,8 @@ func (s URLService) SaveURL(urlEnt model.URLEnt, opts shortener.Opts) (*model.Cr
 	return &data, sErr
 }
 
+// GetURL получает оригинальный URL по короткому идентификатору.
+// Возвращает ErrDeletedID если URL был помечен как удаленный.
 func (s URLService) GetURL(id string) (string, error) {
 	ent, err := s.repo.Get(id)
 	if err != nil {
@@ -114,6 +141,9 @@ func (s URLService) GetURL(id string) (string, error) {
 	return ent.OriginalURL, nil
 }
 
+// SaveURLBatch сохраняет пакет URL за одну операцию.
+// Проверяет каждый URL на существование, создает короткие ссылки для новых.
+// Возвращает слайс всех URL (существующих и созданных) с добавленным base URL.
 func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts) (model.URLBatch, error) {
 	data := model.URLBatch{}
 	prepData := model.URLBatch{}
@@ -128,7 +158,10 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 			data.URLS = append(data.URLS, res)
 			continue
 		}
-		shortSt := lib.GenerateRandomAlphabetString(8)
+		shortSt, err := lib.GenerateRandomAlphabetString(8)
+		if err != nil {
+			return model.URLBatch{}, err
+		}
 		uuid := uuid.New().String()
 		prepData.URLS = append(prepData.URLS, model.URLEnt{
 			OriginalURL: v.OriginalURL,
@@ -155,10 +188,15 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 	return data, nil
 }
 
+// GetURLByUser получает все URL конкретного пользователя.
+// Возвращает пакет URL, созданных указанным пользователем.
 func (s URLService) GetURLByUser(userID string, opts shortener.Opts) (model.URLBatch, error) {
 	return s.repo.GetEntByUser(userID)
 }
 
+// DeleteURLRecordsBuffered асинхронно удаляет URL пользователя через буферизованный канал.
+// Создает горутину-генератор для отправки записей в канал и вызывает репозиторий для обработки.
+// Поддерживает отмену через context для graceful shutdown.
 func (s URLService) DeleteURLRecordsBuffered(ctx context.Context, request model.DeleteURLBatch, bufferSize int) error {
 	out := make(chan model.DeleteURLRecord, bufferSize)
 

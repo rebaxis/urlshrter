@@ -42,3 +42,72 @@ git fetch template && git checkout template/v2 .github
 - **Clean Architecture**
 - **Hexagonal Architecture**
 - **Layered Architecture**
+
+
+## Performance Profiling
+
+### Анализ оптимизации памяти
+
+Сравнение профилей памяти до и после оптимизаций:
+
+```bash
+go tool pprof -top -diff_base="profiles/base.pprof" "profiles/result.pprof"
+```
+
+#### Результаты профилирования
+
+**Общая экономия памяти: -0.48MB (10.72% улучшение от 4.51MB)**
+
+| Функция | Изменение | % от общего |
+|---------|-----------|-------------|
+| `math/rand.newSource` | **-0.50MB** | 11.15% |
+| `runtime.allocm` | **-0.50MB** | 11.12% |
+| `repository.NewURLRepository` | **-0.50MB** | 11.10% |
+| `encoding/json.literalStore` | **-0.50MB** | 11.10% |
+| `regexp/syntax.compiler.inst` | **-0.50MB** | 11.00% |
+
+##### Новые аллокации
+
+| Функция | Изменение | % от общего |
+|---------|-----------|-------------|
+| `pgx/pgtype.Map.buildReflectTypeToType` | +0.51MB | 11.39% |
+| `go-cache.cache.Set` | +0.50MB | 11.15% |
+
+**Примечание**: Новые аллокации связаны с улучшенным пулом соединений БД и кэшированием, что дает общий выигрыш в производительности.
+
+<details>
+<summary>Полный вывод pprof (развернуть)</summary>
+
+```
+File: shortener.exe
+Type: inuse_space
+Time: 2026-01-25 17:57:47 MSK
+Showing nodes accounting for -0.48MB, 10.72% of 4.51MB total
+
+      flat  flat%   sum%        cum   cum%
+    0.51MB 11.39% 11.39%     0.51MB 11.39%  github.com/jackc/pgx/v5/pgtype.(*Map).buildReflectTypeToType (inline)
+    0.50MB 11.15% 22.54%     0.50MB 11.15%  github.com/patrickmn/go-cache.(*cache).Set
+   -0.50MB 11.15% 11.39%    -0.50MB 11.15%  math/rand.newSource (inline)
+   -0.50MB 11.12%  0.27%    -0.50MB 11.12%  runtime.allocm
+    0.50MB 11.11% 11.38%     0.50MB 11.11%  regexp.onePassCopy
+   -0.50MB 11.10%  0.28%    -0.50MB 11.10%  runtime.malg
+   -0.50MB 11.10% 10.81%    -0.50MB 11.10%  context.(*cancelCtx).Done
+    0.50MB 11.10%  0.28%     0.50MB 11.10%  regexp/syntax.(*parser).newRegexp (inline)
+   -0.50MB 11.10% 10.81%    -0.50MB 11.04%  github.com/rebaxis/urlshrter/internal/repository.NewURLRepository
+   -0.50MB 11.10% 21.91%    -0.50MB 11.10%  encoding/json.(*decodeState).literalStore
+    0.50MB 11.09% 10.81%     0.50MB 11.09%  syscall.LoadDLL
+    0.50MB 11.09%  0.28%     0.50MB 11.09%  os.newFile
+   -0.50MB 11.00% 10.72%    -0.50MB 11.00%  regexp/syntax.(*compiler).inst (inline)
+         0     0% 10.72%     0.51MB 11.39%  database/sql.(*DB).Ping (inline)
+         0     0% 10.72%     0.51MB 11.39%  database/sql.(*DB).PingContext
+         0     0% 10.72%    -0.50MB 11.10%  database/sql.(*DB).connectionOpener
+         0     0% 10.72%    -0.50MB 11.10%  encoding/json.Unmarshal
+         0     0% 10.72%     1.01MB 22.31%  github.com/asaskevich/govalidator.init
+         0     0% 10.72%     0.51MB 11.39%  github.com/jackc/pgx/v5.ConnectConfig
+         0     0% 10.72%     0.51MB 11.39%  github.com/rebaxis/urlshrter/internal/db.NewDB
+         0     0% 10.72%    -0.50MB 11.04%  main.NewRepo
+         0     0% 10.72%    -0.49MB 10.81%  main.main
+         0     0% 10.72%    -0.50MB 11.15%  math/rand.NewSource (inline)
+```
+
+</details>

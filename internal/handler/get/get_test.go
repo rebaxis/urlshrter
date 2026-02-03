@@ -9,13 +9,14 @@ import (
 	"time"
 
 	"github.com/patrickmn/go-cache"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGetURLByID(t *testing.T) {

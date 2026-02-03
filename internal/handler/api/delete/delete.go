@@ -1,3 +1,4 @@
+// Package delete предоставляет HTTP обработчики для удаления URL.
 package delete
 
 import (
@@ -9,11 +10,23 @@ import (
 	"time"
 
 	validator "github.com/asaskevich/govalidator"
+
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+// DeleteURLByUser возвращает HTTP обработчик для асинхронного удаления URL пользователя.
+// Принимает JSON массив с короткими URL для удаления (soft delete).
+//
+// Требования:
+//   - Content-Type должен быть application/json
+//   - X-User-ID заголовок устанавливается middleware
+//
+// Статус коды:
+//   - 202 Accepted - запрос принят в обработку
+//   - 400 Bad Request - невалидный запрос
+//   - 500 Internal Server Error - ошибка сервера
 func DeleteURLByUser(service service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем что Content-Type содержит application/json

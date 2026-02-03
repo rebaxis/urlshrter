@@ -3,8 +3,9 @@ package lib_test
 import (
 	"testing"
 
-	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/rebaxis/urlshrter/internal/lib"
 )
 
 func TestGenerateRandomAlphabetString(t *testing.T) {
@@ -21,8 +22,16 @@ func TestGenerateRandomAlphabetString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := lib.GenerateRandomAlphabetString(tt.length)
+			got, err := lib.GenerateRandomAlphabetString(tt.length)
+			assert.NoError(t, err)
 			assert.Regexp(t, tt.want, got)
 		})
+	}
+}
+
+func BenchmarkGenerateRandomAlphabetString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = lib.GenerateRandomAlphabetString(8)
 	}
 }
