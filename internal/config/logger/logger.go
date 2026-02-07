@@ -1,3 +1,4 @@
+// Package logger предоставляет обертку над zap logger для логирования приложения.
 package logger
 
 import "go.uber.org/zap"
