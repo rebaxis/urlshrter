@@ -20,6 +20,7 @@ import (
 // URLRepository предоставляет доступ к хранилищу URL.
 // Поддерживает работу с файлом, базой данных и in-memory кэшем.
 // Использует двухуровневое кэширование: direct (short->URLEnt) и reverse (original->URLEnt).
+// generate:reset
 type URLRepository struct {
 	Storage     model.URLStorage // In-memory хранилище с кэшами
 	StorageFile string           // Путь к файлу для персистентности
