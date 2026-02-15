@@ -43,6 +43,40 @@ git fetch template && git checkout template/v2 .github
 - **Hexagonal Architecture**
 - **Layered Architecture**
 
+## Инструменты разработки
+
+### Reset Code Generator
+
+Автоматический генератор методов `Reset()` для структур Go. Позволяет эффективно сбрасывать состояние объектов к значениям по умолчанию.
+
+Использование:
+
+```bash
+go run cmd/reset/main.go
+```
+
+Подробнее см. [cmd/reset/README.md](cmd/reset/README.md)
+
+### Object Pool
+
+Универсальный пул объектов с автоматическим вызовом `Reset()`. Использует `sync.Pool` для эффективного переиспользования объектов и снижения нагрузки на GC.
+
+```go
+// Создаём пул для типа с методом Reset()
+pool := lib.New(func() *model.URLEnt {
+    return &model.URLEnt{}
+})
+
+// Получаем объект
+ent := pool.Get()
+ent.ShortURL = "abc123"
+
+// Возвращаем в пул - автоматически вызывается Reset()
+pool.Put(ent)
+```
+
+**Производительность**: 0 allocs/op, ~18 ns/op  
+Подробнее см. [internal/lib/pool.go](internal/lib/pool.go)
 
 ## Performance Profiling
 
