@@ -7,6 +7,48 @@
 1. Склонируйте репозиторий в любую подходящую директорию на вашем компьютере.
 2. В корне репозитория выполните команду `go mod init <name>` (где `<name>` — адрес вашего репозитория на GitHub без префикса `https://`) для создания модуля.
 
+## Сборка и запуск
+
+### Простая сборка
+
+```bash
+go build -o shortener.exe ./cmd/shortener
+```
+
+### Сборка с информацией о версии
+
+Приложение поддерживает встраивание информации о версии, дате сборки и коммите через ldflags:
+
+**Linux/Mac:**
+```bash
+./build.sh
+# или с кастомной версией
+VERSION=v2.0.0 ./build.sh
+```
+
+**Makefile:**
+```bash
+make build-with-version
+# или с кастомной версией
+make build-with-version VERSION=v2.0.0
+```
+
+**Ручная сборка:**
+```bash
+go build -ldflags "\
+  -X 'main.buildVersion=v1.0.0' \
+  -X 'main.buildDate=$(date +'%Y/%m/%d %H:%M:%S')' \
+  -X 'main.buildCommit=$(git rev-parse --short HEAD)'" \
+  -o shortener.exe ./cmd/shortener
+```
+
+При запуске приложение выведет информацию о сборке:
+```
+Build version: v1.0.0
+Build date: 2026/02/14 16:40:00
+Build commit: 29ac65e
+```
+
 ## Обновление шаблона
 
 Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:

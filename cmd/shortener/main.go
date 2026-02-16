@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -27,9 +28,23 @@ import (
 	"github.com/rebaxis/urlshrter/internal/service"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 // main запускает приложение с использованием fx dependency injection контейнера.
 func main() {
+	printBuildInfo()
 	fx.New(CreateApp()).Run()
+}
+
+// printBuildInfo выводит информацию о сборке в stdout.
+func printBuildInfo() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 }
 
 // CreateApp создает и конфигурирует fx приложение со всеми необходимыми зависимостями.
