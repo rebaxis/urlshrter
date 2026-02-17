@@ -120,6 +120,30 @@ pool.Put(ent)
 **Производительность**: 0 allocs/op, ~18 ns/op  
 Подробнее см. [internal/lib/pool.go](internal/lib/pool.go)
 
+## Graceful Shutdown
+
+Приложение поддерживает корректное завершение работы при получении сигналов `SIGINT` (Ctrl+C) или `SIGTERM`:
+
+```bash
+# Запуск
+./shortener.exe
+
+# Graceful остановка через Ctrl+C
+```
+
+**Что происходит при остановке:**
+1. Сервер перестает принимать новые соединения
+2. Завершаются все активные HTTP запросы (таймаут 30 сек)
+3. Закрывается соединение с БД
+4. Приложение корректно завершается
+
+**Таймауты:**
+- Запуск: 15 секунд
+- Graceful shutdown: 30 секунд
+- HTTP Read/Write: 15 секунд
+
+Подробнее см. [GRACEFUL_SHUTDOWN.md](GRACEFUL_SHUTDOWN.md)
+
 ## Performance Profiling
 
 ### Анализ оптимизации памяти

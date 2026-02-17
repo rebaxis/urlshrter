@@ -9,8 +9,11 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"syscall"
+	"time"
 
 	chi "github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
@@ -34,10 +37,48 @@ var (
 	buildCommit  = "N/A"
 )
 
+const (
+	// shutdownTimeout - максимальное время ожидания graceful shutdown.
+	shutdownTimeout = 30 * time.Second
+	// startupTimeout - максимальное время ожидания запуска приложения.
+	startupTimeout = 15 * time.Second
+)
+
 // main запускает приложение с использованием fx dependency injection контейнера.
+// Настраивает обработку сигналов прерывания для graceful shutdown.
 func main() {
 	printBuildInfo()
-	fx.New(CreateApp()).Run()
+
+	app := fx.New(
+		CreateApp(),
+		fx.StartTimeout(startupTimeout),
+		fx.StopTimeout(shutdownTimeout),
+	)
+
+	// Создаём контекст с обработкой сигналов
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
+
+	// Запускаем приложение
+	if err := app.Start(ctx); err != nil {
+		log.Fatalf("Failed to start application: %v", err)
+	}
+
+	// Ждём сигнала остановки
+	<-ctx.Done()
+
+	log.Println("Received shutdown signal, initiating graceful shutdown...")
+
+	// Создаём контекст с таймаутом для graceful shutdown
+	stopCtx, stopCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer stopCancel()
+
+	// Останавливаем приложение
+	if err := app.Stop(stopCtx); err != nil {
+		log.Fatalf("Failed to stop application gracefully: %v", err)
+	}
+
+	log.Println("Application stopped gracefully")
 }
 
 // printBuildInfo выводит информацию о сборке в stdout.
@@ -177,16 +218,21 @@ func NewRouter(service service.URLService, dbService service.DBService, jwtCooki
 }
 
 // NewServer создает HTTP сервер с настроенным маршрутизатором и адресом из конфигурации.
+// Устанавливает таймауты для чтения, записи и idle соединений.
 func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 	return &http.Server{
-		Addr:    opts.Address,
-		Handler: r,
+		Addr:              opts.Address,
+		Handler:           r,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 }
 
 // StartServer регистрирует хуки жизненного цикла fx для запуска и остановки HTTP сервера.
 // При старте создает директорию profiles и сохраняет начальный профиль памяти.
-// При остановке закрывает соединение с БД и gracefully останавливает HTTP сервер.
+// При остановке gracefully останавливает HTTP сервер и закрывает соединение с БД.
 func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -205,19 +251,39 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 
 			log.Println("pprof endpoints available at /debug/pprof/")
 
+			// Запускаем HTTP сервер в отдельной горутине
 			go func() {
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					log.Fatalf("HTTP server failed: %v", err)
+					log.Printf("HTTP server error: %v", err)
 				}
 			}()
+
+			log.Println("HTTP server started successfully")
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			if err := d.CloseDB(); err != nil {
-				log.Println("error with closing DB connection: " + err.Error())
+			log.Println("Initiating graceful shutdown of HTTP server...")
+
+			// Останавливаем HTTP сервер с контекстом и таймаутом
+			if err := server.Shutdown(ctx); err != nil {
+				log.Printf("Error during HTTP server shutdown: %v", err)
+				// Пытаемся принудительно закрыть
+				if closeErr := server.Close(); closeErr != nil {
+					log.Printf("Error during forced server close: %v", closeErr)
+				}
+			} else {
+				log.Println("HTTP server stopped gracefully")
 			}
-			log.Println("Shutting down HTTP server")
-			return server.Shutdown(ctx)
+
+			// Закрываем соединение с БД
+			log.Println("Closing database connection...")
+			if err := d.CloseDB(); err != nil {
+				log.Printf("Error closing database connection: %v", err)
+				return err
+			}
+			log.Println("Database connection closed successfully")
+
+			return nil
 		},
 	})
 }
