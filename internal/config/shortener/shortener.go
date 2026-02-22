@@ -23,6 +23,8 @@ type Opts struct {
 	EncryptionKey string `env:"ENCRYPTION_KEY"`    // Секретный ключ для подписи JWT токенов
 	AuditFile     string `env:"AUDIT_FILE"`        // Путь к файлу логов аудита
 	AuditURL      string `env:"AUDIT_URL"`         // URL для отправки событий аудита по HTTP
+	EnableHTTPS   bool   `env:"ENABLE_HTTPS"`      // Включить HTTPS сервер (TLS)
+	CertDir       string `env:"CERT_DIR"`          // Директория для хранения TLS-сертификата и ключа
 }
 
 // GetOpts читает и возвращает конфигурацию приложения.
@@ -42,6 +44,7 @@ func GetOpts() Opts {
 		EncryptionKey: encryptionKey,
 		AuditFile:     "",
 		AuditURL:      "",
+		CertDir:       "certs",
 	}
 
 	var envs Opts
@@ -59,6 +62,8 @@ func GetOpts() Opts {
 	flag.StringVarP(&flags.EncryptionKey, "encryptionKey", "k", "", "Encryption Key")
 	flag.StringVar(&flags.AuditFile, "audit-file", "", "Path to audit log file")
 	flag.StringVar(&flags.AuditURL, "audit-url", "", "URL to send audit events")
+	flag.BoolVarP(&flags.EnableHTTPS, "https", "s", false, "Enable HTTPS (TLS)")
+	flag.StringVar(&flags.CertDir, "cert-dir", "", "Directory for TLS certificate and key files")
 	flag.Parse()
 
 	if flags.Address != "" {
@@ -104,6 +109,18 @@ func GetOpts() Opts {
 	}
 	if flags.AuditURL != "" {
 		opts.AuditURL = flags.AuditURL
+	}
+	if flags.EnableHTTPS {
+		opts.EnableHTTPS = true
+	}
+	if envs.EnableHTTPS {
+		opts.EnableHTTPS = true
+	}
+	if flags.CertDir != "" {
+		opts.CertDir = flags.CertDir
+	}
+	if envs.CertDir != "" {
+		opts.CertDir = envs.CertDir
 	}
 
 	if _, err := url.ParseRequestURI(opts.BaseURL); err != nil {

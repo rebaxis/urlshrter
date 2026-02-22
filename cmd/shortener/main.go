@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 
 	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	"github.com/rebaxis/urlshrter/internal/tlscert"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	apiDelete "github.com/rebaxis/urlshrter/internal/handler/api/delete"
@@ -217,10 +219,24 @@ func NewRouter(service service.URLService, dbService service.DBService, jwtCooki
 	return r
 }
 
+// tlsErrFilter подавляет TLS handshake ошибки в логе сервера.
+// Они возникают когда клиент обращается по HTTP к HTTPS-серверу и не являются
+// признаком неисправности — соединение отклоняется корректно.
+type tlsErrFilter struct{}
+
+func (tlsErrFilter) Write(p []byte) (n int, err error) {
+	if strings.Contains(string(p), "TLS handshake error") {
+		return len(p), nil
+	}
+	return os.Stderr.Write(p)
+}
+
 // NewServer создает HTTP сервер с настроенным маршрутизатором и адресом из конфигурации.
 // Устанавливает таймауты для чтения, записи и idle соединений.
+// При включённом HTTPS назначает фильтрующий ErrorLog, чтобы исключить шумные
+// сообщения о TLS handshake ошибках от клиентов, использующих plain HTTP.
 func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
-	return &http.Server{
+	srv := &http.Server{
 		Addr:              opts.Address,
 		Handler:           r,
 		ReadTimeout:       15 * time.Second,
@@ -228,12 +244,18 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 		IdleTimeout:       60 * time.Second,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+	if opts.EnableHTTPS {
+		srv.ErrorLog = log.New(tlsErrFilter{}, "", log.LstdFlags)
+	}
+	return srv
 }
 
 // StartServer регистрирует хуки жизненного цикла fx для запуска и остановки HTTP сервера.
 // При старте создает директорию profiles и сохраняет начальный профиль памяти.
 // При остановке gracefully останавливает HTTP сервер и закрывает соединение с БД.
-func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl) {
+// Когда opts.EnableHTTPS равен true, сервер запускается через ListenAndServeTLS
+// используя сертификат и ключ из директории certs/.
+func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl, opts shortener.Opts) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
@@ -251,14 +273,27 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 
 			log.Println("pprof endpoints available at /debug/pprof/")
 
-			// Запускаем HTTP сервер в отдельной горутине
-			go func() {
-				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					log.Printf("HTTP server error: %v", err)
+			if opts.EnableHTTPS {
+				certFile, keyFile, err := tlscert.EnsureCertificates(opts.CertDir)
+				if err != nil {
+					return fmt.Errorf("TLS certificate setup failed: %w", err)
 				}
-			}()
+				log.Printf("HTTPS enabled, using cert=%s key=%s", certFile, keyFile)
+				go func() {
+					if err := server.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+						log.Printf("HTTPS server error: %v", err)
+					}
+				}()
+				log.Println("HTTPS server started successfully")
+			} else {
+				go func() {
+					if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+						log.Printf("HTTP server error: %v", err)
+					}
+				}()
+				log.Println("HTTP server started successfully")
+			}
 
-			log.Println("HTTP server started successfully")
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
