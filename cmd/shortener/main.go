@@ -21,7 +21,6 @@ import (
 
 	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
-	"github.com/rebaxis/urlshrter/internal/tlscert"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	apiDelete "github.com/rebaxis/urlshrter/internal/handler/api/delete"
@@ -31,6 +30,7 @@ import (
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
+	"github.com/rebaxis/urlshrter/internal/tlscert"
 )
 
 var (
