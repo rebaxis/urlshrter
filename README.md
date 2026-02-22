@@ -137,13 +137,6 @@ pool.Put(ent)
 3. Закрывается соединение с БД
 4. Приложение корректно завершается
 
-**Таймауты:**
-- Запуск: 15 секунд
-- Graceful shutdown: 30 секунд
-- HTTP Read/Write: 15 секунд
-
-Подробнее см. [GRACEFUL_SHUTDOWN.md](GRACEFUL_SHUTDOWN.md)
-
 ## Performance Profiling
 
 ### Анализ оптимизации памяти
