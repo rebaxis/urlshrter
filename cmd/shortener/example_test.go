@@ -27,11 +27,11 @@ func Example() {
 	}
 	defer os.Remove(tmpFile.Name())
 
-	if _, err := tmpFile.WriteString("[]"); err != nil {
-		log.Fatal(err)
+	if _, writeErr := tmpFile.WriteString("[]"); writeErr != nil {
+		log.Fatal(writeErr)
 	}
-	if err := tmpFile.Close(); err != nil {
-		log.Fatal(err)
+	if closeErr := tmpFile.Close(); closeErr != nil {
+		log.Fatal(closeErr)
 	}
 
 	opts := shortener.Opts{
@@ -82,11 +82,11 @@ func setupRouter() *http.ServeMux {
 		log.Fatal(err)
 	}
 
-	if _, err := tmpFile.WriteString("[]"); err != nil {
-		log.Fatal(err)
+	if _, writeErr := tmpFile.WriteString("[]"); writeErr != nil {
+		log.Fatal(writeErr)
 	}
-	if err := tmpFile.Close(); err != nil {
-		log.Fatal(err)
+	if closeErr := tmpFile.Close(); closeErr != nil {
+		log.Fatal(closeErr)
 	}
 
 	opts := shortener.Opts{

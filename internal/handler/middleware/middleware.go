@@ -1,3 +1,5 @@
+// Package middleware содержит HTTP middleware для обработки запросов.
+// Включает middleware для логирования, сжатия, авторизации, валидации и аудита.
 package middleware
 
 import (
@@ -180,14 +182,13 @@ func AuthorizationMw(jwtCookieService JWTCookieManager) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := jwtCookieService.GetClaimsFromRequest(r)
 			if err == http.ErrNoCookie || err == service.ErrInvalidToken || errors.Is(err, jwt.ErrTokenSignatureInvalid) {
-				userID, err := lib.GenerateRandomAlphabetString(6)
-				if err != nil {
-					http.Error(w, "Failed to generate user ID: "+err.Error(), http.StatusInternalServerError)
+				userID, genErr := lib.GenerateRandomAlphabetString(6)
+				if genErr != nil {
+					http.Error(w, "Failed to generate user ID: "+genErr.Error(), http.StatusInternalServerError)
 					return
 				}
-				err = jwtCookieService.SetJWTCookie(&w, userID)
-				if err != nil {
-					http.Error(w, "Some problem: "+err.Error(), http.StatusBadRequest)
+				if setErr := jwtCookieService.SetJWTCookie(&w, userID); setErr != nil {
+					http.Error(w, "Some problem: "+setErr.Error(), http.StatusBadRequest)
 					return
 				}
 				r.Header.Add("X-User-ID", userID)
