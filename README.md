@@ -7,6 +7,48 @@
 1. Склонируйте репозиторий в любую подходящую директорию на вашем компьютере.
 2. В корне репозитория выполните команду `go mod init <name>` (где `<name>` — адрес вашего репозитория на GitHub без префикса `https://`) для создания модуля.
 
+## Сборка и запуск
+
+### Простая сборка
+
+```bash
+go build -o shortener.exe ./cmd/shortener
+```
+
+### Сборка с информацией о версии
+
+Приложение поддерживает встраивание информации о версии, дате сборки и коммите через ldflags:
+
+**Linux/Mac:**
+```bash
+./build.sh
+# или с кастомной версией
+VERSION=v2.0.0 ./build.sh
+```
+
+**Makefile:**
+```bash
+make build-with-version
+# или с кастомной версией
+make build-with-version VERSION=v2.0.0
+```
+
+**Ручная сборка:**
+```bash
+go build -ldflags "\
+  -X 'main.buildVersion=v1.0.0' \
+  -X 'main.buildDate=$(date +'%Y/%m/%d %H:%M:%S')' \
+  -X 'main.buildCommit=$(git rev-parse --short HEAD)'" \
+  -o shortener.exe ./cmd/shortener
+```
+
+При запуске приложение выведет информацию о сборке:
+```
+Build version: v1.0.0
+Build date: 2026/02/14 16:40:00
+Build commit: 29ac65e
+```
+
 ## Обновление шаблона
 
 Чтобы иметь возможность получать обновления автотестов и других частей шаблона, выполните команду:
@@ -43,6 +85,57 @@ git fetch template && git checkout template/v2 .github
 - **Hexagonal Architecture**
 - **Layered Architecture**
 
+## Инструменты разработки
+
+### Reset Code Generator
+
+Автоматический генератор методов `Reset()` для структур Go. Позволяет эффективно сбрасывать состояние объектов к значениям по умолчанию.
+
+Использование:
+
+```bash
+go run cmd/reset/main.go
+```
+
+Подробнее см. [cmd/reset/README.md](cmd/reset/README.md)
+
+### Object Pool
+
+Универсальный пул объектов с автоматическим вызовом `Reset()`. Использует `sync.Pool` для эффективного переиспользования объектов и снижения нагрузки на GC.
+
+```go
+// Создаём пул для типа с методом Reset()
+pool := lib.New(func() *model.URLEnt {
+    return &model.URLEnt{}
+})
+
+// Получаем объект
+ent := pool.Get()
+ent.ShortURL = "abc123"
+
+// Возвращаем в пул - автоматически вызывается Reset()
+pool.Put(ent)
+```
+
+**Производительность**: 0 allocs/op, ~18 ns/op  
+Подробнее см. [internal/lib/pool.go](internal/lib/pool.go)
+
+## Graceful Shutdown
+
+Приложение поддерживает корректное завершение работы при получении сигналов `SIGINT` (Ctrl+C) или `SIGTERM`:
+
+```bash
+# Запуск
+./shortener.exe
+
+# Graceful остановка через Ctrl+C
+```
+
+**Что происходит при остановке:**
+1. Сервер перестает принимать новые соединения
+2. Завершаются все активные HTTP запросы (таймаут 30 сек)
+3. Закрывается соединение с БД
+4. Приложение корректно завершается
 
 ## Performance Profiling
 

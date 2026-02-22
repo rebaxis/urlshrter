@@ -6,6 +6,7 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+// generate:reset
 type (
 	// URLStorage представляет хранилище URL с кэшированием.
 	// Содержит слайс всех URL, прямой кэш (short_url -> URLEnt) и обратный кэш (original_url -> URLEnt).

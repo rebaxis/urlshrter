@@ -15,6 +15,7 @@ import (
 
 // Event представляет событие аудита, которое необходимо залогировать.
 // Содержит информацию о времени события, действии, пользователе и URL.
+// generate:reset
 type Event struct {
 	Timestamp int64  `json:"ts"`      // Unix timestamp события
 	Action    string `json:"action"`  // Действие: shorten (создание) или follow (переход по ссылке)
