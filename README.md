@@ -120,6 +120,56 @@ pool.Put(ent)
 **Производительность**: 0 allocs/op, ~18 ns/op  
 Подробнее см. [internal/lib/pool.go](internal/lib/pool.go)
 
+## Конфигурационный файл
+
+Помимо флагов командной строки и переменных окружения, приложение поддерживает
+загрузку настроек из JSON файла конфигурации.
+
+**Приоритет источников (от низшего к высшему):**
+
+```
+значения по умолчанию < файл конфигурации < переменные окружения < флаги командной строки
+```
+
+### Указание пути к файлу
+
+| Способ | Пример |
+|--------|--------|
+| Флаг | `./shortener.exe --config /etc/urlshrter/config.json` или `-c config.json` |
+| Переменная окружения | `CONFIG=/etc/urlshrter/config.json ./shortener.exe` |
+
+### Формат файла
+
+```json
+{
+    "server_address": "localhost:8080",
+    "base_url": "http://localhost",
+    "file_storage_path": "/path/to/file.db",
+    "database_dsn": "postgres://user:pass@localhost/db",
+    "encryption_key": "supersecretkey",
+    "audit_file": "/var/log/audit.log",
+    "audit_url": "http://audit.internal/events",
+    "enable_https": true,
+    "cert_dir": "/etc/urlshrter/tls"
+}
+```
+
+Все поля необязательны. Незаданные поля не перезаписывают значения из других источников.
+Поле `enable_https` принимает `true` или `false`; если поле отсутствует — значение не изменяется.
+
+### Пример использования
+
+```bash
+# Запуск с конфигурационным файлом
+./shortener.exe -c config.json
+
+# Переменная окружения перекрывает значение из файла
+BASE_URL=https://my.domain ./shortener.exe -c config.json
+
+# Флаг перекрывает и файл, и переменную окружения
+./shortener.exe -c config.json -b https://override.domain
+```
+
 ## Graceful Shutdown
 
 Приложение поддерживает корректное завершение работы при получении сигналов `SIGINT` (Ctrl+C) или `SIGTERM`:
