@@ -29,6 +29,7 @@ import (
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
 	"github.com/rebaxis/urlshrter/internal/repository"
+
 	"github.com/rebaxis/urlshrter/internal/service"
 	"github.com/rebaxis/urlshrter/internal/tlscert"
 )
@@ -58,7 +59,7 @@ func main() {
 	)
 
 	// Создаём контекст с обработкой сигналов
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer cancel()
 
 	// Запускаем приложение
@@ -252,10 +253,11 @@ func NewServer(r *chi.Mux, opts shortener.Opts) *http.Server {
 
 // StartServer регистрирует хуки жизненного цикла fx для запуска и остановки HTTP сервера.
 // При старте создает директорию profiles и сохраняет начальный профиль памяти.
-// При остановке gracefully останавливает HTTP сервер и закрывает соединение с БД.
+// При остановке: завершает активные запросы, сбрасывает данные в хранилище,
+// закрывает соединение с БД.
 // Когда opts.EnableHTTPS равен true, сервер запускается через ListenAndServeTLS
 // используя сертификат и ключ из директории certs/.
-func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl, opts shortener.Opts) {
+func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrnl, repo repository.URLRepository, opts shortener.Opts) {
 	lifecycle.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Println("Starting HTTP server on", server.Addr)
@@ -299,7 +301,7 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 		OnStop: func(ctx context.Context) error {
 			log.Println("Initiating graceful shutdown of HTTP server...")
 
-			// Останавливаем HTTP сервер с контекстом и таймаутом
+			// Останавливаем HTTP сервер — ждём завершения активных запросов
 			if err := server.Shutdown(ctx); err != nil {
 				log.Printf("Error during HTTP server shutdown: %v", err)
 				// Пытаемся принудительно закрыть
@@ -308,6 +310,14 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 				}
 			} else {
 				log.Println("HTTP server stopped gracefully")
+			}
+
+			// Сбрасываем актуальное состояние in-memory хранилища на диск
+			log.Println("Flushing storage data...")
+			if err := repo.Flush(); err != nil {
+				log.Printf("Error flushing storage: %v", err)
+			} else {
+				log.Println("Storage data flushed successfully")
 			}
 
 			// Закрываем соединение с БД

@@ -259,6 +259,33 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	return urls, nil
 }
 
+// Flush сохраняет текущее состояние in-memory хранилища в JSON файл.
+// Для каждого URL из Storage.URLS берётся актуальная версия из кэша, что
+// гарантирует персистентность операций, обновляющих только кэш (например,
+// мягкое удаление). При использовании БД (UseDB=true) или пустом StorageFile
+// метод является no-op.
+func (r *URLRepository) Flush() error {
+	if r.UseDB || r.StorageFile == "" {
+		return nil
+	}
+
+	updated := make([]model.URLEnt, 0, len(r.Storage.URLS))
+	for _, u := range r.Storage.URLS {
+		if ent, exists := r.Storage.Cache.Get(u.ShortURL); exists {
+			updated = append(updated, ent.(model.URLEnt))
+		} else {
+			updated = append(updated, u)
+		}
+	}
+
+	data, err := json.MarshalIndent(updated, "", "   ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(r.StorageFile, data, 0666)
+}
+
 // DeleteURLByUser выполняет soft delete URL пользователя из канала.
 // Читает записи из канала, обновляет флаг IsDeleted в кэшах.
 // Если UseDB=true, выполняет batch UPDATE в транзакции используя unnest для массовой операции.
