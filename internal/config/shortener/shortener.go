@@ -201,8 +201,8 @@ func GetOpts() Opts {
 	if flags.AuditURL != "" {
 		opts.AuditURL = flags.AuditURL
 	}
-	if flags.EnableHTTPS {
-		opts.EnableHTTPS = true
+	if f := flag.Lookup("https"); f != nil && f.Changed {
+		opts.EnableHTTPS = flags.EnableHTTPS
 	}
 	if flags.CertDir != "" {
 		opts.CertDir = flags.CertDir

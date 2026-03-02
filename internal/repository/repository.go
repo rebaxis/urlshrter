@@ -93,7 +93,7 @@ func (r *URLRepository) Save(urlEnt model.URLEnt) error {
 	}
 
 	// сохраняем данные в файл
-	err = os.WriteFile(r.StorageFile, data, 0666)
+	err = os.WriteFile(r.StorageFile, data, 0600)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (r *URLRepository) SaveBatch(batch model.URLBatch) error {
 	}
 
 	// сохраняем данные в файл
-	err = os.WriteFile(r.StorageFile, data, 0666)
+	err = os.WriteFile(r.StorageFile, data, 0600)
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func (r *URLRepository) Flush() error {
 		return err
 	}
 
-	return os.WriteFile(r.StorageFile, data, 0666)
+	return os.WriteFile(r.StorageFile, data, 0600)
 }
 
 // DeleteURLByUser выполняет soft delete URL пользователя из канала.
