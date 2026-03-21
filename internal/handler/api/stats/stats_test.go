@@ -80,7 +80,9 @@ func TestGetStats_AccessControl(t *testing.T) {
 
 		handler(w, req)
 
-		assert.Equal(t, http.StatusForbidden, w.Result().StatusCode)
+		res := w.Result()
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusForbidden, res.StatusCode)
 	})
 
 	t.Run("missing X-Real-IP returns 403", func(t *testing.T) {
@@ -89,7 +91,9 @@ func TestGetStats_AccessControl(t *testing.T) {
 
 		handler(w, req)
 
-		assert.Equal(t, http.StatusForbidden, w.Result().StatusCode)
+		res := w.Result()
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusForbidden, res.StatusCode)
 	})
 
 	t.Run("empty TrustedSubnet denies everyone", func(t *testing.T) {
@@ -103,6 +107,8 @@ func TestGetStats_AccessControl(t *testing.T) {
 
 		h(w, req)
 
-		assert.Equal(t, http.StatusForbidden, w.Result().StatusCode)
+		res := w.Result()
+		defer res.Body.Close()
+		assert.Equal(t, http.StatusForbidden, res.StatusCode)
 	})
 }
