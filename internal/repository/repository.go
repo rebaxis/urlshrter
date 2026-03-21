@@ -259,6 +259,44 @@ func (r *URLRepository) GetEntByUser(userID string) (model.URLBatch, error) {
 	return urls, nil
 }
 
+// GetStats возвращает количество активных (не удалённых) URL и уникальных пользователей.
+// При использовании БД выполняет два SQL-запроса с таймаутом 3 секунды.
+// В режиме in-memory подсчитывает данные из кэша.
+func (r *URLRepository) GetStats() (int, int, error) {
+	if r.UseDB {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		var urlCount int
+		if err := r.StorageDB.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM urls WHERE is_deleted = false",
+		).Scan(&urlCount); err != nil {
+			return 0, 0, err
+		}
+
+		var userCount int
+		if err := r.StorageDB.QueryRowContext(ctx,
+			"SELECT COUNT(DISTINCT user_id) FROM urls WHERE user_id != ''",
+		).Scan(&userCount); err != nil {
+			return 0, 0, err
+		}
+
+		return urlCount, userCount, nil
+	}
+
+	urlCount := 0
+	userSet := make(map[string]struct{})
+	for _, u := range r.Storage.URLS {
+		if !u.IsDeleted {
+			urlCount++
+		}
+		if u.UserID != "" {
+			userSet[u.UserID] = struct{}{}
+		}
+	}
+	return urlCount, len(userSet), nil
+}
+
 // Flush сохраняет текущее состояние in-memory хранилища в JSON файл.
 // Для каждого URL из Storage.URLS берётся актуальная версия из кэша, что
 // гарантирует персистентность операций, обновляющих только кэш (например,

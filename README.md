@@ -120,6 +120,39 @@ pool.Put(ent)
 **Производительность**: 0 allocs/op, ~18 ns/op  
 Подробнее см. [internal/lib/pool.go](internal/lib/pool.go)
 
+## Эндпоинт статистики
+
+### GET /api/internal/stats
+
+Возвращает общую статистику сервиса: количество сокращённых URL и уникальных пользователей.
+
+**Ответ (200 OK):**
+```json
+{
+    "urls": 42,
+    "users": 7
+}
+```
+
+**Контроль доступа** — эндпоинт проверяет заголовок `X-Real-IP` входящего запроса.
+IP-адрес должен входить в доверенную подсеть, заданную параметром `trusted_subnet`.
+Если подсеть не задана или IP не входит в неё — возвращается `403 Forbidden`.
+
+### Настройка доверенной подсети
+
+| Способ | Пример |
+|--------|--------|
+| Флаг | `./shortener.exe -t 192.168.1.0/24` или `--trustedSubnet 192.168.1.0/24` |
+| Переменная окружения | `TRUSTED_SUBNET=192.168.1.0/24 ./shortener.exe` |
+| JSON конфиг | `"trusted_subnet": "192.168.1.0/24"` |
+
+**Пример запроса:**
+```bash
+curl -H "X-Real-IP: 192.168.1.10" http://localhost:8080/api/internal/stats
+```
+
+---
+
 ## Конфигурационный файл
 
 Помимо флагов командной строки и переменных окружения, приложение поддерживает
@@ -150,7 +183,8 @@ pool.Put(ent)
     "audit_file": "/var/log/audit.log",
     "audit_url": "http://audit.internal/events",
     "enable_https": true,
-    "cert_dir": "/etc/urlshrter/tls"
+    "cert_dir": "/etc/urlshrter/tls",
+    "trusted_subnet": "192.168.1.0/24"
 }
 ```
 

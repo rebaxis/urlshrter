@@ -25,6 +25,7 @@ import (
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	apiDelete "github.com/rebaxis/urlshrter/internal/handler/api/delete"
 	apiGet "github.com/rebaxis/urlshrter/internal/handler/api/get"
+	apiStats "github.com/rebaxis/urlshrter/internal/handler/api/stats"
 	"github.com/rebaxis/urlshrter/internal/handler/create"
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
@@ -214,6 +215,7 @@ func NewRouter(service service.URLService, dbService service.DBService, jwtCooki
 	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIBodyChain...))
 	r.Get("/api/user/urls", mw.BuildMwChain(apiGet.GetURLByUser(service, opts), mwChain...))
 	r.Delete("/api/user/urls", mw.BuildMwChain(apiDelete.DeleteURLByUser(service, opts), mwAPIBodyChain...))
+	r.Get("/api/internal/stats", mw.BuildMwChain(apiStats.GetStats(service, opts), mwChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwShortenChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwFollowChain...))
 	r.Get("/ping", mw.BuildMwChain(get.PingDB(dbService), mwChain...))

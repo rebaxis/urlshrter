@@ -30,6 +30,7 @@ type Opts struct {
 	EnableHTTPS   bool   `env:"ENABLE_HTTPS"`      // Включить HTTPS сервер (TLS)
 	CertDir       string `env:"CERT_DIR"`          // Директория для хранения TLS-сертификата и ключа
 	ConfigFile    string `env:"CONFIG"`            // Путь к JSON файлу конфигурации
+	TrustedSubnet string `env:"TRUSTED_SUBNET"`    // CIDR подсеть доверенных клиентов для /api/internal/stats
 }
 
 // FileConfig описывает структуру JSON конфигурационного файла.
@@ -46,6 +47,7 @@ type FileConfig struct {
 	AuditURL      string `json:"audit_url"`
 	EnableHTTPS   *bool  `json:"enable_https"`
 	CertDir       string `json:"cert_dir"`
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 // LoadConfigFile читает JSON конфигурационный файл по указанному пути и
@@ -107,6 +109,7 @@ func GetOpts() Opts {
 	flag.BoolVarP(&flags.EnableHTTPS, "https", "s", false, "Enable HTTPS (TLS)")
 	flag.StringVar(&flags.CertDir, "cert-dir", "", "Directory for TLS certificate and key files")
 	flag.StringVarP(&flags.ConfigFile, "config", "c", "", "Path to JSON config file")
+	flag.StringVarP(&flags.TrustedSubnet, "trustedSubnet", "t", "", "Trusted CIDR subnet for /api/internal/stats (e.g. 192.168.1.0/24)")
 	flag.Parse()
 
 	// Определяем путь к файлу конфигурации (флаг > env > "")
@@ -148,6 +151,9 @@ func GetOpts() Opts {
 		if fileCfg.CertDir != "" {
 			opts.CertDir = fileCfg.CertDir
 		}
+		if fileCfg.TrustedSubnet != "" {
+			opts.TrustedSubnet = fileCfg.TrustedSubnet
+		}
 	}
 
 	// Применяем переменные окружения поверх файла конфигурации
@@ -178,6 +184,9 @@ func GetOpts() Opts {
 	if envs.CertDir != "" {
 		opts.CertDir = envs.CertDir
 	}
+	if envs.TrustedSubnet != "" {
+		opts.TrustedSubnet = envs.TrustedSubnet
+	}
 
 	// Применяем флаги командной строки поверх переменных окружения
 	if flags.Address != "" {
@@ -206,6 +215,9 @@ func GetOpts() Opts {
 	}
 	if flags.CertDir != "" {
 		opts.CertDir = flags.CertDir
+	}
+	if flags.TrustedSubnet != "" {
+		opts.TrustedSubnet = flags.TrustedSubnet
 	}
 
 	if _, err := url.ParseRequestURI(opts.BaseURL); err != nil {

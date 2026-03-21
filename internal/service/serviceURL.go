@@ -48,6 +48,12 @@ type DeleterURLByUser interface {
 	DeleteURLByUser(ctx context.Context, ch chan model.DeleteURLRecord) error
 }
 
+// StatsGetter определяет интерфейс для получения статистики сервиса.
+// Возвращает количество активных URL и уникальных пользователей.
+type StatsGetter interface {
+	GetStats() (int, int, error)
+}
+
 // URLReaderWriter объединяет все интерфейсы для работы с URL репозиторием.
 // Используется для dependency injection в URLService.
 type URLReaderWriter interface {
@@ -58,6 +64,7 @@ type URLReaderWriter interface {
 	URLSaveBatch
 	GetterEntByUser
 	DeleterURLByUser
+	StatsGetter
 }
 
 // URLService предоставляет бизнес-логику для работы с сокращенными URL.
@@ -192,6 +199,11 @@ func (s URLService) SaveURLBatch(req model.CreateIDBatchReq, opts shortener.Opts
 // Возвращает пакет URL, созданных указанным пользователем.
 func (s URLService) GetURLByUser(userID string, opts shortener.Opts) (model.URLBatch, error) {
 	return s.repo.GetEntByUser(userID)
+}
+
+// GetStats возвращает количество активных URL и уникальных пользователей в сервисе.
+func (s URLService) GetStats() (int, int, error) {
+	return s.repo.GetStats()
 }
 
 // DeleteURLRecordsBuffered асинхронно удаляет URL пользователя через буферизованный канал.
