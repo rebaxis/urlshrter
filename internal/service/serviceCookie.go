@@ -131,3 +131,9 @@ func (j *JWTCookieService) GetClaimsFromRequest(r *http.Request) (*Claims, error
 
 	return j.parseToken(cookie.Value)
 }
+
+// ParseToken валидирует JWT токен из строки и возвращает claims.
+// Используется в gRPC interceptor для извлечения userID из метаданных.
+func (j *JWTCookieService) ParseToken(tokenString string) (*Claims, error) {
+	return j.parseToken(tokenString)
+}

@@ -21,6 +21,7 @@ import (
 // Приоритет: флаги > переменные окружения > файл конфигурации > значения по умолчанию.
 type Opts struct {
 	Address       string `env:"SERVER_ADDRESS"`    // Адрес HTTP сервера (host:port)
+	GRPCAddress   string `env:"GRPC_ADDRESS"`      // Адрес gRPC сервера (host:port)
 	BaseURL       string `env:"BASE_URL"`          // Базовый URL для формирования коротких ссылок
 	StorageFile   string `env:"FILE_STORAGE_PATH"` // Путь к файлу для хранения URL (если не используется БД)
 	DatabaseDSN   string `env:"DATABASE_DSN"`      // Data Source Name для PostgreSQL
@@ -39,6 +40,7 @@ type Opts struct {
 // явное false от отсутствия значения.
 type FileConfig struct {
 	Address       string `json:"server_address"`
+	GRPCAddress   string `json:"grpc_address"`
 	BaseURL       string `json:"base_url"`
 	StorageFile   string `json:"file_storage_path"`
 	DatabaseDSN   string `json:"database_dsn"`
@@ -82,6 +84,7 @@ func GetOpts() Opts {
 	// Значения по умолчанию
 	opts := Opts{
 		Address:       "127.0.0.1:8080",
+		GRPCAddress:   "127.0.0.1:3200",
 		BaseURL:       "http://localhost:8080",
 		StorageFile:   `C:\Users\Public\Documents\urlshrter.json`,
 		DatabaseDSN:   "",
@@ -101,6 +104,7 @@ func GetOpts() Opts {
 	var flags Opts
 	flag.StringVarP(&flags.BaseURL, "baseURL", "b", "", "Base url")
 	flag.StringVarP(&flags.Address, "address", "a", "", "Server address host:port")
+	flag.StringVar(&flags.GRPCAddress, "grpc-address", "", "gRPC server address host:port")
 	flag.StringVarP(&flags.StorageFile, "storageFile", "f", "", "Path to storage file")
 	flag.StringVarP(&flags.DatabaseDSN, "databaseDSN", "d", "", "Database address")
 	flag.StringVarP(&flags.EncryptionKey, "encryptionKey", "k", "", "Encryption Key")
@@ -126,6 +130,9 @@ func GetOpts() Opts {
 		}
 		if fileCfg.Address != "" {
 			opts.Address = fileCfg.Address
+		}
+		if fileCfg.GRPCAddress != "" {
+			opts.GRPCAddress = fileCfg.GRPCAddress
 		}
 		if fileCfg.BaseURL != "" {
 			opts.BaseURL = fileCfg.BaseURL
@@ -160,6 +167,9 @@ func GetOpts() Opts {
 	if envs.Address != "" {
 		opts.Address = envs.Address
 	}
+	if envs.GRPCAddress != "" {
+		opts.GRPCAddress = envs.GRPCAddress
+	}
 	if envs.BaseURL != "" {
 		opts.BaseURL = envs.BaseURL
 	}
@@ -191,6 +201,9 @@ func GetOpts() Opts {
 	// Применяем флаги командной строки поверх переменных окружения
 	if flags.Address != "" {
 		opts.Address = flags.Address
+	}
+	if flags.GRPCAddress != "" {
+		opts.GRPCAddress = flags.GRPCAddress
 	}
 	if flags.BaseURL != "" {
 		opts.BaseURL = flags.BaseURL

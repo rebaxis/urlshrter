@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -18,10 +19,13 @@ import (
 
 	chi "github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
+	"google.golang.org/grpc"
 
 	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
+	grpcServer "github.com/rebaxis/urlshrter/internal/grpc"
+	pb "github.com/rebaxis/urlshrter/internal/grpc/pb"
 	apiCreate "github.com/rebaxis/urlshrter/internal/handler/api/create"
 	apiDelete "github.com/rebaxis/urlshrter/internal/handler/api/delete"
 	apiGet "github.com/rebaxis/urlshrter/internal/handler/api/get"
@@ -30,7 +34,6 @@ import (
 	"github.com/rebaxis/urlshrter/internal/handler/get"
 	mw "github.com/rebaxis/urlshrter/internal/handler/middleware"
 	"github.com/rebaxis/urlshrter/internal/repository"
-
 	"github.com/rebaxis/urlshrter/internal/service"
 	"github.com/rebaxis/urlshrter/internal/tlscert"
 )
@@ -93,7 +96,7 @@ func printBuildInfo() {
 }
 
 // CreateApp создает и конфигурирует fx приложение со всеми необходимыми зависимостями.
-// Регистрирует провайдеры для всех сервисов и запускает HTTP сервер.
+// Регистрирует провайдеры для всех сервисов и запускает HTTP и gRPC серверы.
 func CreateApp() fx.Option {
 	return fx.Options(
 		fx.Provide(
@@ -105,9 +108,11 @@ func CreateApp() fx.Option {
 			NewAuditSubject,
 			NewRouter,
 			NewServer,
+			NewGRPCServer,
 			NewOpts,
 		),
 		fx.Invoke(StartServer),
+		fx.Invoke(StartGRPCServer),
 	)
 }
 
@@ -330,6 +335,40 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 			}
 			log.Println("Database connection closed successfully")
 
+			return nil
+		},
+	})
+}
+
+// NewGRPCServer создаёт gRPC сервер с interceptor авторизации и регистрирует ShortenerService.
+func NewGRPCServer(urlService service.URLService, jwtCookieService service.JWTCookieService, opts shortener.Opts) *grpc.Server {
+	interceptor := grpcServer.AuthInterceptor(&jwtCookieService)
+	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor))
+	pb.RegisterShortenerServiceServer(s, grpcServer.NewServer(urlService, opts))
+	return s
+}
+
+// StartGRPCServer регистрирует хуки жизненного цикла fx для запуска и остановки gRPC сервера.
+// Сервер слушает на адресе opts.GRPCAddress.
+func StartGRPCServer(lifecycle fx.Lifecycle, s *grpc.Server, opts shortener.Opts) {
+	lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			lis, err := net.Listen("tcp", opts.GRPCAddress)
+			if err != nil {
+				return fmt.Errorf("gRPC listen on %s: %w", opts.GRPCAddress, err)
+			}
+			log.Printf("Starting gRPC server on %s", opts.GRPCAddress)
+			go func() {
+				if err := s.Serve(lis); err != nil {
+					log.Printf("gRPC server error: %v", err)
+				}
+			}()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			log.Println("Stopping gRPC server gracefully...")
+			s.GracefulStop()
+			log.Println("gRPC server stopped")
 			return nil
 		},
 	})
