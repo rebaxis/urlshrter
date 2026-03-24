@@ -267,17 +267,27 @@ func (r *URLRepository) GetStats() (int, int, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 
+		tx, err := r.StorageDB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+		if err != nil {
+			return 0, 0, err
+		}
+		defer tx.Rollback()
+
 		var urlCount int
-		if err := r.StorageDB.QueryRowContext(ctx,
+		if err := tx.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM urls WHERE is_deleted = false",
 		).Scan(&urlCount); err != nil {
 			return 0, 0, err
 		}
 
 		var userCount int
-		if err := r.StorageDB.QueryRowContext(ctx,
+		if err := tx.QueryRowContext(ctx,
 			"SELECT COUNT(DISTINCT user_id) FROM urls WHERE user_id != ''",
 		).Scan(&userCount); err != nil {
+			return 0, 0, err
+		}
+
+		if err := tx.Commit(); err != nil {
 			return 0, 0, err
 		}
 

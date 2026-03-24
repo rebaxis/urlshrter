@@ -12,6 +12,7 @@ import (
 
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
 	dbIntrnl "github.com/rebaxis/urlshrter/internal/db"
+	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/repository"
 	"github.com/rebaxis/urlshrter/internal/service"
@@ -34,7 +35,7 @@ func TestIsIPTrusted(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expect, IsIPTrusted(tt.ip, tt.cidr))
+			assert.Equal(t, tt.expect, lib.IsIPTrusted(tt.ip, tt.cidr))
 		})
 	}
 }

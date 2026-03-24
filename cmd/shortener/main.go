@@ -20,6 +20,7 @@ import (
 	chi "github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/rebaxis/urlshrter/internal/audit"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
@@ -197,9 +198,17 @@ func NewAuditSubject(opts shortener.Opts) *audit.Subject {
 //   - LoggingMw - логирование всех запросов
 //   - ValidatingBodyMw - валидация тела запроса (для некоторых эндпоинтов)
 //   - AuditMw - аудит событий (для создания и использования URL)
+//
+// Эндпоинт /api/internal/stats использует отдельную цепочку без AuthorizationMw,
+// так как доступ контролируется по IP-адресу (TrustedSubnet), а не по JWT.
 func NewRouter(service service.URLService, dbService service.DBService, jwtCookieService service.JWTCookieService, auditSubject *audit.Subject, opts shortener.Opts) *chi.Mux {
 	var mwChain = []mw.Middleware{
 		mw.AuthorizationMw(&jwtCookieService),
+		mw.CompressMw,
+		mw.LoggingMw,
+	}
+
+	var mwStatsChain = []mw.Middleware{
 		mw.CompressMw,
 		mw.LoggingMw,
 	}
@@ -220,7 +229,7 @@ func NewRouter(service service.URLService, dbService service.DBService, jwtCooki
 	r.Post("/api/shorten/batch", mw.BuildMwChain(apiCreate.CreateIDBatch(service, opts), mwAPIBodyChain...))
 	r.Get("/api/user/urls", mw.BuildMwChain(apiGet.GetURLByUser(service, opts), mwChain...))
 	r.Delete("/api/user/urls", mw.BuildMwChain(apiDelete.DeleteURLByUser(service, opts), mwAPIBodyChain...))
-	r.Get("/api/internal/stats", mw.BuildMwChain(apiStats.GetStats(service, opts), mwChain...))
+	r.Get("/api/internal/stats", mw.BuildMwChain(apiStats.GetStats(service, opts), mwStatsChain...))
 	r.Post("/", mw.BuildMwChain(create.CreateID(service, opts), mwShortenChain...))
 	r.Get("/{id}", mw.BuildMwChain(get.GetURLByID(service), mwFollowChain...))
 	r.Get("/ping", mw.BuildMwChain(get.PingDB(dbService), mwChain...))
@@ -341,9 +350,13 @@ func StartServer(lifecycle fx.Lifecycle, server *http.Server, d dbIntrnl.DBIntrn
 }
 
 // NewGRPCServer создаёт gRPC сервер с interceptor авторизации и регистрирует ShortenerService.
+// TLS явно отключён — сервер работает в режиме insecure (plaintext).
 func NewGRPCServer(urlService service.URLService, jwtCookieService service.JWTCookieService, opts shortener.Opts) *grpc.Server {
 	interceptor := grpcServer.AuthInterceptor(&jwtCookieService)
-	s := grpc.NewServer(grpc.UnaryInterceptor(interceptor))
+	s := grpc.NewServer(
+		grpc.Creds(insecure.NewCredentials()),
+		grpc.ChainUnaryInterceptor(interceptor),
+	)
 	pb.RegisterShortenerServiceServer(s, grpcServer.NewServer(urlService, opts))
 	return s
 }

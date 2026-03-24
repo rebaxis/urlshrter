@@ -3,10 +3,11 @@ package stats
 
 import (
 	"encoding/json"
-	"net"
 	"net/http"
 
+	"github.com/rebaxis/urlshrter/internal/config/logger"
 	"github.com/rebaxis/urlshrter/internal/config/shortener"
+	"github.com/rebaxis/urlshrter/internal/lib"
 	"github.com/rebaxis/urlshrter/internal/model"
 	"github.com/rebaxis/urlshrter/internal/service"
 )
@@ -17,7 +18,7 @@ import (
 // Если TrustedSubnet не задан или IP не входит в подсеть — возвращает 403 Forbidden.
 func GetStats(svc service.URLService, opts shortener.Opts) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !IsIPTrusted(r.Header.Get("X-Real-IP"), opts.TrustedSubnet) {
+		if !lib.IsIPTrusted(r.Header.Get("X-Real-IP"), opts.TrustedSubnet) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -35,23 +36,9 @@ func GetStats(svc service.URLService, opts shortener.Opts) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(resp)
+		log := logger.GetLogger()
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Log.Errorln("failed to encode stats response", err)
+		}
 	}
-}
-
-// IsIPTrusted проверяет, входит ли переданный IP-адрес в указанную CIDR-подсеть.
-// Возвращает false если cidr или ipStr пусты, либо содержат некорректные значения.
-func IsIPTrusted(ipStr, cidr string) bool {
-	if cidr == "" || ipStr == "" {
-		return false
-	}
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
-		return false
-	}
-	_, subnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return false
-	}
-	return subnet.Contains(ip)
 }
