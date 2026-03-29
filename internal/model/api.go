@@ -59,4 +59,11 @@ type (
 	BatchDeleteEntByUserReq struct {
 		ShortURLs []string `valid:"required"` // Список коротких URL для удаления
 	}
+
+	// StatsResp представляет ответ эндпоинта GET /api/internal/stats.
+	// Возвращает количество сокращённых URL и уникальных пользователей в сервисе.
+	StatsResp struct {
+		URLs  int `json:"urls"`  // Количество сокращённых URL в сервисе
+		Users int `json:"users"` // Количество уникальных пользователей в сервисе
+	}
 )
